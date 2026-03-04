@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from '@/app/App'
 import { LocationProvider, useLocation } from '@/context/LocationContext'
@@ -11,6 +12,28 @@ vi.mock('@/services/nearbyBirds', () => ({
 }))
 
 const mockGetNearbyBirds = vi.mocked(getNearbyBirds)
+const demoBirds = [
+  {
+    id: 'northern-cardinal',
+    commonName: 'Northern Cardinal',
+    scientificName: 'Cardinalis cardinalis',
+    distanceMiles: 1.2,
+    lat: 45.52,
+    lng: -122.67,
+    group: 'songbird' as const,
+    lastSeenHoursAgo: 2,
+  },
+  {
+    id: 'red-tailed-hawk',
+    commonName: 'Red-tailed Hawk',
+    scientificName: 'Buteo jamaicensis',
+    distanceMiles: 8.4,
+    lat: 45.54,
+    lng: -122.7,
+    group: 'raptor' as const,
+    lastSeenHoursAgo: 18,
+  },
+]
 
 function SeedLocation({ zip }: { zip?: string }) {
   const { setZipLocation } = useLocation()
@@ -37,7 +60,10 @@ function TestApp({ initialPath, seedZip }: { initialPath: string; seedZip?: stri
 
 describe('BirdListPlaceholder', () => {
   beforeEach(() => {
+    cleanup()
     vi.clearAllMocks()
+    window.innerWidth = 1024
+    window.dispatchEvent(new Event('resize'))
   })
 
   it('shows recovery path when /birds is opened without a location', async () => {
@@ -54,26 +80,19 @@ describe('BirdListPlaceholder', () => {
     render(<TestApp initialPath="/birds" seedZip="12345" />)
 
     expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
-    expect(screen.getByText('Finding nearby birds...')).toBeInTheDocument()
+    expect(screen.getAllByText('Finding nearby birds...').length).toBeGreaterThan(0)
   })
 
   it('renders bird list when nearby birds load', async () => {
-    mockGetNearbyBirds.mockResolvedValue([
-      {
-        id: 'northern-cardinal',
-        commonName: 'Northern Cardinal',
-        scientificName: 'Cardinalis cardinalis',
-        distanceMiles: 1.2,
-      },
-    ])
+    mockGetNearbyBirds.mockResolvedValue([demoBirds[0]])
 
     render(<TestApp initialPath="/birds" seedZip="12345" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Northern Cardinal')).toBeInTheDocument()
+      expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
     })
-    expect(screen.getByText('Cardinalis cardinalis')).toBeInTheDocument()
-    expect(screen.getByText(/~1.2 miles away/)).toBeInTheDocument()
+    expect(screen.getAllByText('Cardinalis cardinalis').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/~1.2 miles away/).length).toBeGreaterThan(0)
   })
 
   it('renders empty state when service returns no birds', async () => {
@@ -82,7 +101,7 @@ describe('BirdListPlaceholder', () => {
     render(<TestApp initialPath="/birds" seedZip="00000" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/No birds found for this location yet/)).toBeInTheDocument()
+      expect(screen.getAllByText(/No birds found for this location yet/).length).toBeGreaterThan(0)
     })
   })
 
@@ -92,8 +111,54 @@ describe('BirdListPlaceholder', () => {
     render(<TestApp initialPath="/birds" seedZip="99999" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Nearby bird service is temporarily unavailable.')).toBeInTheDocument()
+      expect(screen.getAllByText('Nearby bird service is temporarily unavailable.').length).toBeGreaterThan(0)
     })
-    expect(screen.getByRole('button', { name: /Try another location/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Try another location/i }).length).toBeGreaterThan(0)
+  })
+
+  it('toggles into mobile list mode', async () => {
+    const user = userEvent.setup()
+    mockGetNearbyBirds.mockResolvedValue(demoBirds)
+    window.innerWidth = 390
+    window.dispatchEvent(new Event('resize'))
+
+    render(<TestApp initialPath="/birds" seedZip="12345" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
+    })
+    await user.click(screen.getAllByRole('button', { name: 'List' })[0])
+    expect(screen.getAllByRole('button', { name: /Bird card northern-cardinal/i }).length).toBeGreaterThan(0)
+  })
+
+  it('filters list by bird group', async () => {
+    const user = userEvent.setup()
+    mockGetNearbyBirds.mockResolvedValue(demoBirds)
+
+    render(<TestApp initialPath="/birds" seedZip="12345" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
+    })
+    await user.click(screen.getAllByRole('button', { name: 'raptor' })[0])
+    expect(screen.queryAllByText('Northern Cardinal').length).toBe(0)
+    expect(screen.getAllByText('Red-tailed Hawk').length).toBeGreaterThan(0)
+  })
+
+  it('syncs map marker click to selected list card', async () => {
+    const user = userEvent.setup()
+    mockGetNearbyBirds.mockResolvedValue(demoBirds)
+
+    render(<TestApp initialPath="/birds" seedZip="12345" />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Bird marker red-tailed-hawk/i }).length).toBeGreaterThan(0)
+    })
+
+    await user.click(screen.getAllByRole('button', { name: /Bird marker red-tailed-hawk/i })[0])
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Bird card red-tailed-hawk/i })[0]).toHaveAttribute('aria-pressed', 'true')
+    })
   })
 })
