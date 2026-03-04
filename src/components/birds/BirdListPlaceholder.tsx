@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { getNearbyBirds, type NearbyBird } from '@/services/nearbyBirds'
 import { BirdMap } from '@/components/birds/BirdMap'
+import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
 type MobileViewMode = 'map' | 'list'
 type SheetMode = 'collapsed' | 'half' | 'expanded'
@@ -247,13 +248,16 @@ export function BirdListPlaceholder() {
     <div className="min-h-screen bg-linear-to-t from-[#f6f0e7] from-35% to-[rgba(200,178,146,0.8)]">
       <header className="sticky top-0 z-20 border-b border-[#c8b292]/50 bg-[#f6f0e7]/95 px-4 pb-4 pt-4 backdrop-blur-sm md:px-6">
         <div className="mb-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="font-kodchasan text-sm text-[#006e63] underline hover:opacity-80"
-          >
-            ← Back
-          </button>
+          <div className="flex items-center gap-1.5">
+            <FeatherFinderMark showName={false} />
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="font-kodchasan text-xs text-[#006e63] hover:opacity-80"
+            >
+              ← Back
+            </button>
+          </div>
           <h1 className="font-kodchasan text-xl font-bold text-[#4e3626] md:text-2xl">Birds Near You</h1>
           <span className="font-kodchasan text-xs text-[#4e3626]/70">{locationLabel}</span>
         </div>

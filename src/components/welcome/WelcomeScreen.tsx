@@ -3,16 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
 import { isValidZip, formatZipInput } from '@/lib/zipValidation'
-
-function InfoIcon() {
-  return (
-    <svg className="size-full" fill="none" viewBox="0 0 21 20" stroke="#006E63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10.43" cy="10" r="8.7" />
-      <path d="M10.4355 9.58337V13.75" />
-      <path d="M10.4355 6.25667L10.4423 6.24913" />
-    </svg>
-  )
-}
+import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
 function SearchIcon() {
   return (
@@ -70,11 +61,6 @@ export function WelcomeScreen() {
     }
   }, [isGeoSuccess, coords, setGeoLocation, navigate])
 
-  const handleInfo = () => {
-    // Placeholder for future about/explainer overlay
-    console.log('Show app info')
-  }
-
   const handleLogin = () => {
     // Placeholder for future login flow
     console.log('Navigate to login')
@@ -84,14 +70,7 @@ export function WelcomeScreen() {
     <div className="flex min-h-screen flex-col bg-linear-to-t from-[#f6f0e7] from-35% to-[rgba(200,178,146,0.8)]">
       {/* Header */}
       <header className="fixed left-0 right-0 top-0 z-50 flex items-start justify-between px-5 pt-10">
-        <button
-          type="button"
-          onClick={handleInfo}
-          className="size-6 cursor-pointer transition-opacity hover:opacity-80"
-          aria-label="App info"
-        >
-          <InfoIcon />
-        </button>
+        <FeatherFinderMark showName />
         <button
           type="button"
           onClick={handleLogin}
