@@ -1,0 +1,12 @@
+{
+  "typescript.tsserver.maxTsServerMemory": 4096,
+  "files.exclude": {},
+  "search.exclude": {
+    "**/visual-explorations": true,
+    "**/node_modules": true,
+    "**/dist": true
+  },
+  "files.watcherExclude": {
+    "**/visual-explorations/**": true
+  }
+}
