@@ -16,6 +16,7 @@ const mockUseGeolocation = vi.fn(() => ({
 
 vi.mock('@/hooks/useGeolocation', () => ({
   useGeolocation: () => mockUseGeolocation(),
+  GEOLOCATION_TIMEOUT_MS: 30000,
 }))
 
 function TestApp() {
@@ -55,7 +56,7 @@ describe('WelcomeScreen', () => {
       fireEvent.click(screen.getAllByRole('button', { name: /search/i })[0])
       await waitFor(
         () => {
-          expect(screen.getAllByText('Bird List').length).toBeGreaterThan(0)
+          expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
         },
         { timeout: 3000 }
       )
@@ -81,6 +82,7 @@ describe('WelcomeScreen', () => {
       render(<TestApp />)
       expect(screen.getByText('Finding your location...')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /finding your location/i })).toBeDisabled()
+      expect(screen.getByText(/Check your browser for a location permission prompt/)).toBeInTheDocument()
     })
 
     it('shows denied message when user denies permission', () => {
@@ -92,7 +94,7 @@ describe('WelcomeScreen', () => {
       })
       render(<TestApp />)
       expect(screen.getByText(/Location access was denied/)).toBeInTheDocument()
-      expect(screen.getAllByText(/Try entering a zip code instead/)[0]).toBeInTheDocument()
+      expect(screen.getByText(/enter a zip code instead/)).toBeInTheDocument()
     })
 
     it('shows timeout message when request times out', () => {
@@ -104,7 +106,7 @@ describe('WelcomeScreen', () => {
       })
       render(<TestApp />)
       expect(screen.getByText(/Location request timed out/)).toBeInTheDocument()
-      expect(screen.getAllByText(/Try entering a zip code instead/)[0]).toBeInTheDocument()
+      expect(screen.getByText(/You can retry with Discover birds near you/)).toBeInTheDocument()
     })
 
     it('navigates to /birds and stores coords when geolocation succeeds', async () => {
@@ -117,7 +119,7 @@ describe('WelcomeScreen', () => {
       render(<TestApp />)
       await waitFor(
         () => {
-          expect(screen.getAllByText('Bird List').length).toBeGreaterThan(0)
+          expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
         },
         { timeout: 3000 }
       )

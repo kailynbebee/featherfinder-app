@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useGeolocation } from './useGeolocation'
+import { GEOLOCATION_MAX_AGE_MS, GEOLOCATION_TIMEOUT_MS, useGeolocation } from './useGeolocation'
 
 describe('useGeolocation', () => {
   let mockGetCurrentPosition: ReturnType<typeof vi.fn>
@@ -94,7 +94,7 @@ describe('useGeolocation', () => {
     })
 
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toBe('Location request timed out.')
+    expect(result.current.error).toBe('Location request timed out. Please try again or use a zip code.')
   })
 
   it('sets unavailable state when geolocation is not supported', () => {
@@ -119,8 +119,8 @@ describe('useGeolocation', () => {
       expect.any(Function),
       expect.objectContaining({
         enableHighAccuracy: false,
-        timeout: 20000,
-        maximumAge: 60000,
+        timeout: GEOLOCATION_TIMEOUT_MS,
+        maximumAge: GEOLOCATION_MAX_AGE_MS,
       })
     )
   })

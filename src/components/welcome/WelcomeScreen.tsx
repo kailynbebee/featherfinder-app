@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
-import { useGeolocation } from '@/hooks/useGeolocation'
+import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
 import { isValidZip, formatZipInput } from '@/lib/zipValidation'
 
 function InfoIcon() {
@@ -45,6 +45,7 @@ export function WelcomeScreen() {
   const isGeoSuccess = geoStatus === 'success'
   const isGeoDenied = geoStatus === 'denied'
   const isGeoUnavailable = geoStatus === 'unavailable' || geoStatus === 'error'
+  const timeoutSeconds = Math.floor(GEOLOCATION_TIMEOUT_MS / 1000)
 
   const handleZipSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -163,14 +164,19 @@ export function WelcomeScreen() {
             )}
             {isGeoLoading ? 'Finding your location...' : 'Discover birds near you'}
           </button>
+          {isGeoLoading && (
+            <p className="text-center text-sm text-[#4e3626]/80">
+              Check your browser for a location permission prompt. If nothing appears, use a zip code while we wait ({timeoutSeconds}s).
+            </p>
+          )}
           {isGeoDenied && (
             <p className="text-center text-sm text-[#4e3626]/80">
-              Location access was denied. Try entering a zip code instead.
+              Location access was denied. Allow location in your browser settings, or enter a zip code instead.
             </p>
           )}
           {isGeoUnavailable && geoError && (
             <p className="text-center text-sm text-[#4e3626]/80">
-              {geoError}{' '}Try entering a zip code instead.
+              {geoError}{' '}You can retry with Discover birds near you, or enter a zip code instead.
             </p>
           )}
         </div>

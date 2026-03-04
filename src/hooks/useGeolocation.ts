@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 
 export type GeolocationStatus = 'idle' | 'loading' | 'success' | 'denied' | 'unavailable' | 'error'
+export const GEOLOCATION_TIMEOUT_MS = 30000
+export const GEOLOCATION_MAX_AGE_MS = 300000
 
 export type GeolocationResult = {
   status: GeolocationStatus
@@ -15,6 +17,8 @@ export function useGeolocation(): GeolocationResult {
   const [error, setError] = useState<string | null>(null)
 
   const requestLocation = useCallback(() => {
+    if (status === 'loading') return
+
     if (!('geolocation' in navigator)) {
       setStatus('unavailable')
       setError('Geolocation is not supported by your browser')
@@ -22,6 +26,7 @@ export function useGeolocation(): GeolocationResult {
     }
 
     setStatus('loading')
+    setCoords(null)
     setError(null)
 
     navigator.geolocation.getCurrentPosition(
@@ -41,7 +46,7 @@ export function useGeolocation(): GeolocationResult {
           setError('Could not determine your location.')
         } else if (err.code === 3) {
           setStatus('error')
-          setError('Location request timed out.')
+          setError('Location request timed out. Please try again or use a zip code.')
         } else {
           setStatus('error')
           setError('Could not get your location.')
@@ -49,11 +54,11 @@ export function useGeolocation(): GeolocationResult {
       },
       {
         enableHighAccuracy: false, // Faster on desktop; uses IP/WiFi instead of GPS
-        timeout: 20000, // 20s to reduce timeout errors
-        maximumAge: 60000, // Allow 1min cached position for instant response
+        timeout: GEOLOCATION_TIMEOUT_MS,
+        maximumAge: GEOLOCATION_MAX_AGE_MS,
       }
     )
-  }, [])
+  }, [status])
 
   return { status, coords, error, requestLocation }
 }
