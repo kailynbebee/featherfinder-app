@@ -2,8 +2,11 @@ import { Component, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { getNearbyBirds, type NearbyBird } from '@/services/nearbyBirds'
+import { useBirdImage } from '@/hooks/useBirdImage'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+
+const THUMBNAIL_SIZE = 72
 
 type MobileViewMode = 'map' | 'list'
 type SheetMode = 'collapsed' | 'half' | 'expanded'
@@ -63,26 +66,142 @@ function BirdCard({
   bird,
   selected,
   onSelect,
+  onQuickView,
 }: {
   bird: NearbyBird
   selected: boolean
   onSelect: () => void
+  onQuickView: () => void
 }) {
+  const { imageUrl, isLoading } = useBirdImage(bird.id, bird.scientificName)
+
+  const handleClick = () => {
+    onSelect()
+    onQuickView()
+  }
+
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={handleClick}
       aria-pressed={selected}
       aria-label={`Bird card ${bird.id}`}
-      className={`w-full rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-[#dff6d8]' : 'bg-white/85 hover:bg-white'}`}
+      className={`flex w-full gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-[#dff6d8]' : 'bg-white/85 hover:bg-white'}`}
     >
-      <p className="font-kodchasan text-lg font-bold text-[#4e3626]">{bird.commonName}</p>
-      <p className="font-kodchasan text-sm text-[#4e3626]/80 italic">{bird.scientificName}</p>
-      <p className="mt-1 font-kodchasan text-sm text-[#4e3626]/70">~{bird.distanceMiles} miles away</p>
-      <p className="mt-1 font-kodchasan text-xs text-[#4e3626]/65">
-        {bird.group} · seen {bird.lastSeenHoursAgo}h ago
-      </p>
+      <div
+        className="shrink-0 overflow-hidden rounded-lg bg-[#c8b292]/30"
+        style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
+      >
+        {isLoading ? (
+          <div
+            className="h-full w-full animate-pulse bg-[#c8b292]/50"
+            aria-hidden
+          />
+        ) : imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            className="flex h-full w-full items-center justify-center bg-[#c8b292]/40"
+            aria-hidden
+          >
+            <span className="text-[#4e3626]/40 text-xl">🐦</span>
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-kodchasan text-lg font-bold text-[#4e3626]">{bird.commonName}</p>
+        <p className="font-kodchasan text-sm text-[#4e3626]/80 italic">{bird.scientificName}</p>
+        <p className="mt-1 font-kodchasan text-sm text-[#4e3626]/70">~{bird.distanceMiles} miles away</p>
+        <p className="mt-1 font-kodchasan text-xs text-[#4e3626]/65">
+          {bird.group} · seen {bird.lastSeenHoursAgo}h ago
+        </p>
+      </div>
     </button>
+  )
+}
+
+function QuickViewOverlay({
+  bird,
+  onClose,
+}: {
+  bird: NearbyBird
+  onClose: () => void
+}) {
+  const { imageUrl, caption, isLoading } = useBirdImage(bird.id, bird.scientificName)
+
+  useEffect(() => {
+    const handlePopState = () => onClose()
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-view-title"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-8 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 rounded-full p-1 text-[#4e3626]/70 hover:bg-[#c8b292]/30 hover:text-[#4e3626]"
+        >
+          <span className="text-xl">×</span>
+        </button>
+        <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-[#4e3626]">
+          {bird.commonName}
+        </h2>
+        <p className="font-kodchasan text-sm italic text-[#4e3626]/80">{bird.scientificName}</p>
+        <figure className="mt-4">
+          <div className="flex justify-center overflow-hidden rounded-xl bg-[#c8b292]/20">
+            {isLoading ? (
+              <div
+                className="h-64 w-80 animate-pulse bg-[#c8b292]/40"
+                aria-hidden
+              />
+            ) : imageUrl ? (
+              <img
+                src={imageUrl}
+                alt=""
+                className="h-64 w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-64 w-80 items-center justify-center bg-[#c8b292]/30">
+                <span className="text-4xl text-[#4e3626]/40">🐦</span>
+              </div>
+            )}
+          </div>
+          {(caption || imageUrl) && (
+            <figcaption className="mt-2 text-center font-kodchasan text-xs text-[#4e3626]/60">
+              {caption && <span>{caption} · </span>}
+              <a
+                href="https://www.inaturalist.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#006e63] underline hover:opacity-80"
+              >
+                iNaturalist
+              </a>
+            </figcaption>
+          )}
+        </figure>
+        <p className="mt-4 font-kodchasan text-sm text-[#4e3626]/70">
+          ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -99,7 +218,20 @@ export function BirdListPlaceholder() {
   const [recentOnly, setRecentOnly] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('distance')
   const [selectedBirdId, setSelectedBirdId] = useState<string | null>(null)
+  const [quickViewBird, setQuickViewBird] = useState<NearbyBird | null>(null)
   const isDesktop = useIsDesktop()
+
+  const openQuickView = (bird: NearbyBird) => {
+    setQuickViewBird(bird)
+    history.pushState({ quickView: true }, '')
+  }
+
+  const closeQuickView = () => {
+    setQuickViewBird(null)
+    if (window.history.state?.quickView) {
+      history.back()
+    }
+  }
 
   useEffect(() => {
     if (!location) return
@@ -167,12 +299,35 @@ export function BirdListPlaceholder() {
     }
   }, [visibleBirds, selectedBirdId])
 
+  function BirdCardSkeleton() {
+    return (
+      <div className="flex gap-4 rounded-xl p-4 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
+        <div
+          className="shrink-0 animate-pulse rounded-lg bg-[#c8b292]/40"
+          style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
+        />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="h-5 w-3/4 animate-pulse rounded bg-[#c8b292]/40" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-[#c8b292]/30" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-[#c8b292]/30" />
+        </div>
+      </div>
+    )
+  }
+
   const renderListContent = (wrapperClassName?: string): ReactNode => {
     if (isLoading) {
       return (
-        <p className={wrapperClassName ?? 'mt-4 font-kodchasan text-sm text-[#4e3626]/60'}>
-          Finding nearby birds...
-        </p>
+        <div className={wrapperClassName ?? 'mt-4'} role="status" aria-live="polite">
+          <span className="sr-only">Finding nearby birds...</span>
+          <ul className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <li key={i}>
+                <BirdCardSkeleton />
+              </li>
+            ))}
+          </ul>
+        </div>
       )
     }
 
@@ -215,6 +370,7 @@ export function BirdListPlaceholder() {
               bird={bird}
               selected={selectedBirdId === bird.id}
               onSelect={() => setSelectedBirdId(bird.id)}
+              onQuickView={() => openQuickView(bird)}
             />
           </li>
         ))}
@@ -410,6 +566,9 @@ export function BirdListPlaceholder() {
             </section>
           )}
       </main>
+      {quickViewBird && (
+        <QuickViewOverlay bird={quickViewBird} onClose={closeQuickView} />
+      )}
     </div>
   )
 }
