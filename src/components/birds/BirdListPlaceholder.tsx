@@ -9,6 +9,7 @@ import { RarityBadge } from '@/components/ui/RarityBadge'
 import { BirdCard } from '@/components/birds/BirdCard'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { AppHeader } from '@/components/layout/AppHeader'
 
 const THUMBNAIL_SIZE = 72
 
@@ -396,8 +397,8 @@ export function BirdListPlaceholder() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-t from-app-background from-35% to-app-border-muted/80">
-      <header className="sticky top-0 z-20 border-b border-app-border-muted/50 bg-app-background/95 px-4 pb-4 pt-4 backdrop-blur-sm md:px-6">
+    <div className="min-h-screen bg-app-background">
+      <AppHeader className="px-4 pb-4 pt-4 md:px-6">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <FeatherFinderMark showName={false} />
@@ -484,7 +485,7 @@ export function BirdListPlaceholder() {
             Sort: {sortMode === 'distance' ? 'Distance' : 'Recent'}
           </button>
         </div>
-      </header>
+      </AppHeader>
 
       <main className="mx-auto w-full max-w-360 md:px-6 md:pb-6">
         {isDesktop ? (

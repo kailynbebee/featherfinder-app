@@ -4,6 +4,7 @@ import { useLocation } from '@/context/LocationContext'
 import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
 import { useLocationSearchController } from '@/features/location-search/useLocationSearchController'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { AppHeader } from '@/components/layout/AppHeader'
 import { palette } from '@/theme/palette'
 
 function SearchIcon() {
@@ -108,29 +109,27 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-linear-to-t from-app-background from-35% to-app-border-muted/80">
-      {/* Header */}
-      <header className="fixed left-0 right-0 top-0 z-50 flex items-start justify-between px-5 pt-10">
-        <FeatherFinderMark showName />
+    <div className="flex min-h-screen flex-col bg-app-background">
+      <AppHeader className="flex items-start justify-between px-5 pt-10 pb-4">
+        <h1 className="m-0">
+          <FeatherFinderMark showName />
+        </h1>
         <button
           type="button"
           onClick={handleLogin}
           className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-80"
         >
-          <span className="font-kodchasan text-[19px] font-bold text-app-accent-secondary underline">
+          <span className="font-kodchasan text-[19px] font-bold text-app-text underline">
             Log in
           </span>
           <span className="size-4.75">
             <LogInIcon />
           </span>
         </button>
-      </header>
+      </AppHeader>
 
-      {/* Hero - static gradient placeholder (no bird carousel for now) */}
-      <div className="flex-1 min-h-0" aria-hidden />
-
-      {/* Bottom content - fixed at bottom */}
-      <div className="relative z-10 flex flex-col items-center gap-4 px-5 pb-8 pt-4">
+      {/* Main content - flat, solid (Khroma-style) */}
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-app-background px-5 pb-8 pt-8">
         {/* Bird name placeholder (static for simplified hero) */}
         <p className="font-kodchasan text-[14px] font-medium text-app-text">
           Tropical Royal Flycatcher
@@ -234,7 +233,7 @@ export function WelcomeScreen() {
             type="button"
             onClick={handleDiscoverNearby}
             disabled={isGeoLoading}
-            className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-app-accent-secondary transition-opacity hover:opacity-80 disabled:opacity-50 ${isGeoLoading ? 'no-underline' : 'underline'}`}
+            className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-app-accent underline transition-opacity hover:opacity-80 disabled:opacity-50 ${isGeoLoading ? 'no-underline' : 'underline'}`}
           >
             {isGeoLoading && (
               <span className="size-5 animate-spin rounded-full border-2 border-app-accent-secondary border-t-transparent" aria-hidden />
@@ -257,7 +256,7 @@ export function WelcomeScreen() {
             </p>
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

@@ -20,7 +20,7 @@ export function FeatherFinderMark({ showName = true, className = '' }: FeatherFi
         />
       </svg>
       {showName && (
-        <span className="font-kodchasan text-[19px] font-bold text-app-accent-secondary-hover">
+        <span className="font-kodchasan text-[19px] font-bold text-app-text">
           FeatherFinder
         </span>
       )}
