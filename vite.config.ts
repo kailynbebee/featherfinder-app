@@ -93,6 +93,43 @@ function locationApiPlugin() {
           sendJson(res, 502, { error: msg })
         }
       })
+
+      server.middlewares.use('/api/birds/image', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const q = url.searchParams.get('q')?.trim()
+        if (!q || q.length < 2) {
+          sendJson(res, 400, { error: 'q (scientific name) is required' })
+          return
+        }
+        try {
+          const inatUrl = `https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(q)}&rank=species`
+          const inatRes = await fetch(inatUrl, {
+            headers: { Accept: 'application/json' },
+          })
+          const data = (await inatRes.json()) as {
+            results?: Array<{
+              default_photo?: {
+                medium_url?: string
+                attribution?: string
+                attribution_name?: string
+                license_code?: string
+              }
+            }>
+          }
+          const photo = data?.results?.[0]?.default_photo
+          const imageUrl = photo?.medium_url ?? null
+          const attribution = photo?.attribution ?? null
+          const attributionName = photo?.attribution_name ?? null
+          const licenseCode = photo?.license_code ?? null
+          sendJson(res, 200, { url: imageUrl, attribution, attributionName, licenseCode })
+        } catch (err) {
+          sendJson(res, 502, { url: null, attribution: null, attributionName: null, licenseCode: null })
+        }
+      })
     },
   }
 }
