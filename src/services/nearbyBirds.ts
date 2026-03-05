@@ -1,6 +1,11 @@
 import type { LocationValue } from '@/context/LocationContext'
+import { WINGSPAN_EBIRD_SPECIES } from '@/data/wingspanBirds'
 
 export type RarityTier = 'common' | 'uncommon' | 'rare'
+
+export function isInWingspan(birdId: string): boolean {
+  return WINGSPAN_EBIRD_SPECIES.has(birdId)
+}
 
 export type BirdTag =
   | { type: 'country_bird'; country: string }

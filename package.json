@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "update-wingspan-birds": "tsx scripts/update-wingspan-birds.ts"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -30,6 +31,7 @@
     "tailwindcss": "^4.1.12",
     "typescript": "~5.6.2",
     "vite": "^6.3.5",
+    "tsx": "^4.21.0",
     "vitest": "^2.1.6"
   }
 }
