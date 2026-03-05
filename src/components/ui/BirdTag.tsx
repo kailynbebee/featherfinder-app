@@ -56,15 +56,15 @@ function getTagLabel(tag: BirdTagType): string {
 function getTagStyles(tag: BirdTagType): string {
   switch (tag.type) {
     case 'country_bird':
-      return 'bg-[#4a7c9e]/20 text-[#2d5a75] border-[#4a7c9e]/40'
+      return 'bg-app-accent-secondary/20 text-app-accent-secondary-hover border-app-accent-secondary/40'
     case 'subnational_bird':
-      return 'bg-[#5a8f5a]/20 text-[#2d5a2d] border-[#5a8f5a]/40'
+      return 'bg-app-accent-secondary/20 text-app-accent-secondary-hover border-app-accent-secondary/40'
     case 'season':
       return tag.isNow
-        ? 'bg-[#5a8f5a]/25 text-[#1d3b2a] border-[#5a8f5a]/50'
-        : 'border-[#c8b292]/60 text-[#4e3626]/70 bg-transparent'
+        ? 'bg-app-accent-secondary/25 text-app-accent-secondary-hover border-app-accent-secondary/50'
+        : 'border-app-border-muted/60 text-app-text/70 bg-transparent'
     default:
-      return 'bg-[#c8b292]/20 text-[#4e3626]/80 border-[#c8b292]/40'
+      return 'bg-app-border-muted/20 text-app-text/80 border-app-border-muted/40'
   }
 }
 

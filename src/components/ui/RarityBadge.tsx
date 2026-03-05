@@ -1,9 +1,9 @@
 import type { RarityTier } from '@/services/nearbyBirds'
 
 const RARITY_STYLES: Record<RarityTier, string> = {
-  common: 'bg-[#9ca3af]/25 text-[#4b5563] border-[#9ca3af]/50',
-  uncommon: 'bg-[#4a7c9e]/20 text-[#2d5a75] border-[#4a7c9e]/40',
-  rare: 'bg-[#c8a84a]/25 text-[#6b5a2d] border-[#c8a84a]/50',
+  common: 'bg-app-text-muted/25 text-app-text-muted border-app-text-muted/50',
+  uncommon: 'bg-app-accent-secondary/20 text-app-accent-secondary-hover border-app-accent-secondary/40',
+  rare: 'bg-app-accent/25 text-app-accent-hover border-app-accent/50',
 }
 
 export function RarityBadge({ tier }: { tier: RarityTier }) {

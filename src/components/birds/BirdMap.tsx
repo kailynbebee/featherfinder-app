@@ -3,6 +3,7 @@ import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import type { DivIcon } from 'leaflet'
 import L from 'leaflet'
 import type { NearbyBird } from '@/services/nearbyBirds'
+import { palette } from '@/theme/palette'
 
 type BirdMapProps = {
   birds: NearbyBird[]
@@ -35,7 +36,7 @@ function markerIcon(isSelected: boolean): DivIcon {
       height:${isSelected ? 22 : 16}px;
       border-radius:9999px;
       border:2px solid white;
-      background:${isSelected ? '#77db6f' : '#1d3b2a'};
+      background:${isSelected ? palette.accent : palette.accentSecondaryHover};
       display:block;
       box-shadow:0 2px 6px rgba(0,0,0,0.25);
     "></span>`,
@@ -55,7 +56,7 @@ export function BirdMap({ birds, selectedBirdId, onSelectBird, className }: Bird
   if (import.meta.env.MODE === 'test') {
     return (
       <div className={className ?? ''}>
-        <p className="rounded-full bg-white/90 px-3 py-1 font-kodchasan text-xs text-[#4e3626]">
+        <p className="rounded-full bg-white/90 px-3 py-1 font-kodchasan text-xs text-app-text">
           Map view (Leaflet in Phase 2)
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -65,7 +66,7 @@ export function BirdMap({ birds, selectedBirdId, onSelectBird, className }: Bird
               type="button"
               onClick={() => onSelectBird(bird.id)}
               aria-label={`Bird marker ${bird.id}`}
-              className={`rounded-md border px-2 py-1 text-xs ${bird.id === selectedBirdId ? 'bg-[#dff6d8]' : 'bg-white'}`}
+              className={`rounded-md border px-2 py-1 text-xs ${bird.id === selectedBirdId ? 'bg-app-accent-secondary/15' : 'bg-white'}`}
             >
               {bird.commonName}
             </button>

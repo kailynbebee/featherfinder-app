@@ -6,6 +6,7 @@ import { useBirdImage } from '@/hooks/useBirdImage'
 import { useBirdTags } from '@/hooks/useBirdTags'
 import { BirdTag as BirdTagChip } from '@/components/ui/BirdTag'
 import { RarityBadge } from '@/components/ui/RarityBadge'
+import { BirdCard } from '@/components/birds/BirdCard'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
@@ -65,91 +66,6 @@ function useIsDesktop() {
   return isDesktop
 }
 
-function BirdCard({
-  bird,
-  tags,
-  rarity,
-  selected,
-  onSelect,
-  onQuickView,
-  showWingspanMark,
-}: {
-  bird: NearbyBird
-  tags: readonly BirdTag[]
-  rarity: RarityTier
-  selected: boolean
-  onSelect: () => void
-  onQuickView: () => void
-  showWingspanMark: boolean
-}) {
-  const { imageUrl, isLoading } = useBirdImage(bird.id, bird.scientificName)
-
-  const handleClick = () => {
-    onSelect()
-    onQuickView()
-  }
-
-  const inWingspan = isInWingspan(bird.id)
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-pressed={selected}
-      aria-label={`Bird card ${bird.id}${inWingspan ? ', in Wingspan' : ''}`}
-      className={`relative flex w-full gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-[#dff6d8]' : 'bg-white/85 hover:bg-white'}`}
-    >
-      {showWingspanMark && inWingspan && (
-        <span
-          className="absolute right-3 top-3 font-serif text-sm font-bold text-[#4e3626]/60"
-          aria-label="In Wingspan"
-        >
-          W
-        </span>
-      )}
-      <div
-        className="shrink-0 overflow-hidden rounded-lg bg-[#c8b292]/30"
-        style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
-      >
-        {isLoading ? (
-          <div
-            className="h-full w-full animate-pulse bg-[#c8b292]/50"
-            aria-hidden
-          />
-        ) : imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center bg-[#c8b292]/40"
-            aria-hidden
-          >
-            <span className="text-[#4e3626]/40 text-xl">🐦</span>
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="font-kodchasan text-lg font-bold text-[#4e3626]">{bird.commonName}</p>
-        <p className="font-kodchasan text-sm text-[#4e3626]/80 italic">{bird.scientificName}</p>
-        <p className="mt-1 font-kodchasan text-sm text-[#4e3626]/70">~{bird.distanceMiles} miles away</p>
-        <p className="mt-1 font-kodchasan text-xs text-[#4e3626]/65">
-          {bird.group} · seen {bird.lastSeenHoursAgo}h ago
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <RarityBadge tier={rarity} />
-          {tags.map((tag, i) => (
-            <BirdTagChip key={i} tag={tag} />
-          ))}
-        </div>
-      </div>
-    </button>
-  )
-}
-
 function QuickViewOverlay({
   bird,
   tags,
@@ -188,27 +104,27 @@ function QuickViewOverlay({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 rounded-full p-1 text-[#4e3626]/70 hover:bg-[#c8b292]/30 hover:text-[#4e3626]"
+          className="absolute right-4 top-4 rounded-full p-1 text-app-text/70 hover:bg-app-border-muted/30 hover:text-app-text"
         >
           <span className="text-xl">×</span>
         </button>
         {showWingspanMark && inWingspan && (
           <span
-            className="absolute right-12 top-8 font-serif text-base font-bold text-[#4e3626]/60"
+            className="absolute right-12 top-8 font-serif text-base font-bold text-app-text/60"
             aria-label="In Wingspan"
           >
             W
           </span>
         )}
-        <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-[#4e3626]">
+        <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-app-text">
           {bird.commonName}
         </h2>
-        <p className="font-kodchasan text-sm italic text-[#4e3626]/80">{bird.scientificName}</p>
+        <p className="font-kodchasan text-sm italic text-app-text/80">{bird.scientificName}</p>
         <figure className="mt-4">
-          <div className="flex justify-center overflow-hidden rounded-xl bg-[#c8b292]/20">
+          <div className="flex justify-center overflow-hidden rounded-xl bg-app-border-muted/20">
             {isLoading ? (
               <div
-                className="h-64 w-80 animate-pulse bg-[#c8b292]/40"
+                className="h-64 w-80 animate-pulse bg-app-border-muted/40"
                 aria-hidden
               />
             ) : imageUrl ? (
@@ -218,26 +134,26 @@ function QuickViewOverlay({
                 className="h-64 w-full object-cover"
               />
             ) : (
-              <div className="flex h-64 w-80 items-center justify-center bg-[#c8b292]/30">
-                <span className="text-4xl text-[#4e3626]/40">🐦</span>
+              <div className="flex h-64 w-80 items-center justify-center bg-app-border-muted/30">
+                <span className="text-4xl text-app-text/40">🐦</span>
               </div>
             )}
           </div>
           {(caption || imageUrl) && (
-            <figcaption className="mt-2 text-center font-kodchasan text-xs text-[#4e3626]/60">
+            <figcaption className="mt-2 text-center font-kodchasan text-xs text-app-text/60">
               {caption && <span>{caption} · </span>}
               <a
                 href="https://www.inaturalist.org"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#006e63] underline hover:opacity-80"
+                className="text-app-accent-secondary underline hover:opacity-80"
               >
                 iNaturalist
               </a>
             </figcaption>
           )}
         </figure>
-        <p className="mt-4 font-kodchasan text-sm text-[#4e3626]/70">
+        <p className="mt-4 font-kodchasan text-sm text-app-text/70">
           ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -397,13 +313,13 @@ export function BirdListPlaceholder() {
     return (
       <div className="flex gap-4 rounded-xl p-4 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
         <div
-          className="shrink-0 animate-pulse rounded-lg bg-[#c8b292]/40"
+          className="shrink-0 animate-pulse rounded-lg bg-app-border-muted/40"
           style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
         />
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="h-5 w-3/4 animate-pulse rounded bg-[#c8b292]/40" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-[#c8b292]/30" />
-          <div className="h-4 w-1/3 animate-pulse rounded bg-[#c8b292]/30" />
+          <div className="h-5 w-3/4 animate-pulse rounded bg-app-border-muted/40" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-app-border-muted/30" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-app-border-muted/30" />
         </div>
       </div>
     )
@@ -432,7 +348,7 @@ export function BirdListPlaceholder() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="font-kodchasan text-sm text-[#006e63] underline hover:opacity-80"
+            className="font-kodchasan text-sm text-app-accent-secondary underline hover:opacity-80"
           >
             Try another location
           </button>
@@ -442,7 +358,7 @@ export function BirdListPlaceholder() {
 
     if (birds.length === 0) {
       return (
-        <p className={wrapperClassName ?? 'mt-4 font-kodchasan text-sm text-[#4e3626]/60'}>
+        <p className={wrapperClassName ?? 'mt-4 font-kodchasan text-sm text-app-text/60'}>
           No birds found for this location yet. Try another location.
         </p>
       )
@@ -450,7 +366,7 @@ export function BirdListPlaceholder() {
 
     if (visibleBirds.length === 0) {
       return (
-        <p className={wrapperClassName ?? 'mt-4 font-kodchasan text-sm text-[#4e3626]/60'}>
+        <p className={wrapperClassName ?? 'mt-4 font-kodchasan text-sm text-app-text/60'}>
           No birds match your filters. Adjust filters to see more.
         </p>
       )
@@ -480,24 +396,24 @@ export function BirdListPlaceholder() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-t from-[#f6f0e7] from-35% to-[rgba(200,178,146,0.8)]">
-      <header className="sticky top-0 z-20 border-b border-[#c8b292]/50 bg-[#f6f0e7]/95 px-4 pb-4 pt-4 backdrop-blur-sm md:px-6">
+    <div className="min-h-screen bg-linear-to-t from-app-background from-35% to-app-border-muted/80">
+      <header className="sticky top-0 z-20 border-b border-app-border-muted/50 bg-app-background/95 px-4 pb-4 pt-4 backdrop-blur-sm md:px-6">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <FeatherFinderMark showName={false} />
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="font-kodchasan text-xs text-[#006e63] hover:opacity-80"
+              className="font-kodchasan text-xs text-app-accent-secondary hover:opacity-80"
             >
               ← Back
             </button>
           </div>
-          <h1 className="font-kodchasan text-xl font-bold text-[#4e3626] md:text-2xl">Birds Near You</h1>
-          <span className="font-kodchasan text-xs text-[#4e3626]/70">{locationLabel}</span>
+          <h1 className="font-kodchasan text-xl font-bold text-app-text md:text-2xl">Birds Near You</h1>
+          <span className="font-kodchasan text-xs text-app-text/70">{locationLabel}</span>
         </div>
         <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
-          <p className="font-kodchasan text-sm text-[#4e3626]/60">Search birds, locations, or hotspots</p>
+          <p className="font-kodchasan text-sm text-app-text/60">Search birds, locations, or hotspots</p>
         </div>
         <div className="mt-3 flex items-stretch gap-2 pb-1">
           <div className="relative flex min-w-0 flex-1 items-center">
@@ -511,7 +427,7 @@ export function BirdListPlaceholder() {
                   key={distance}
                   type="button"
                   onClick={() => setDistanceFilter(distance)}
-                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
                 >
                   {distance === 'all' ? 'All distances' : `Under ${distance} mi`}
                 </button>
@@ -521,17 +437,17 @@ export function BirdListPlaceholder() {
                   key={group}
                   type="button"
                   onClick={() => setGroupFilter(group)}
-                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${groupFilter === group ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${groupFilter === group ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
                 >
                   {group === 'all' ? 'All groups' : group}
                 </button>
               ))}
-              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-[#c8b292]/70" role="group" aria-label="Wingspan bird filter">
+              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Wingspan bird filter">
                 <button
                   type="button"
                   onClick={() => setIncludeNonGameBirds(false)}
                   aria-pressed={!includeNonGameBirds}
-                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-[#dff6d8] text-[#1d3b2a]' : 'bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'}`}
                 >
                   Wingspan birds
                 </button>
@@ -539,7 +455,7 @@ export function BirdListPlaceholder() {
                   type="button"
                   onClick={() => setIncludeNonGameBirds(true)}
                   aria-pressed={includeNonGameBirds}
-                  className={`flex h-10 items-center border-l border-[#c8b292]/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-[#dff6d8] text-[#1d3b2a]' : 'bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                  className={`flex h-10 items-center border-l border-app-border-muted/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'}`}
                 >
                   All birds
                 </button>
@@ -547,7 +463,7 @@ export function BirdListPlaceholder() {
               <button
                 type="button"
                 onClick={() => setRecentOnly((value) => !value)}
-                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
               >
                 Last 24h
               </button>
@@ -555,7 +471,7 @@ export function BirdListPlaceholder() {
             </div>
             {showFilterFade && (
               <div
-                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-gradient-to-r from-transparent to-[#f6f0e7]"
+                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-gradient-to-r from-transparent to-app-background"
                 aria-hidden
               />
             )}
@@ -563,7 +479,7 @@ export function BirdListPlaceholder() {
           <button
             type="button"
             onClick={() => setSortMode((mode) => (mode === 'distance' ? 'recent' : 'distance'))}
-            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-[#c8b292]/70 bg-white px-3 font-kodchasan text-sm text-[#4e3626] hover:bg-[#f6f0e7]"
+            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-app-border-muted/70 bg-white px-3 font-kodchasan text-sm text-app-text hover:bg-app-background"
           >
             Sort: {sortMode === 'distance' ? 'Distance' : 'Recent'}
           </button>
@@ -580,7 +496,7 @@ export function BirdListPlaceholder() {
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center rounded-2xl bg-white/70 p-4 text-center">
-                    <p className="font-kodchasan text-sm text-[#4e3626]/80">
+                    <p className="font-kodchasan text-sm text-app-text/80">
                       The map could not load right now. You can still browse birds in the list.
                     </p>
                   </div>
@@ -600,14 +516,14 @@ export function BirdListPlaceholder() {
             <button
               type="button"
               onClick={() => setMobileView('map')}
-              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'map' ? 'bg-[#77db6f] text-[#1d3b2a]' : 'bg-white/80 text-[#4e3626]'}`}
+              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'map' ? 'bg-app-accent text-white' : 'bg-white/80 text-app-text'}`}
             >
               Map
             </button>
             <button
               type="button"
               onClick={() => setMobileView('list')}
-              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'list' ? 'bg-[#77db6f] text-[#1d3b2a]' : 'bg-white/80 text-[#4e3626]'}`}
+              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'list' ? 'bg-app-accent text-white' : 'bg-white/80 text-app-text'}`}
             >
               List
             </button>
@@ -625,7 +541,7 @@ export function BirdListPlaceholder() {
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center bg-white/70 p-4 text-center">
-                    <p className="font-kodchasan text-sm text-[#4e3626]/80">
+                    <p className="font-kodchasan text-sm text-app-text/80">
                       The map could not load right now. Switch to List view to keep exploring birds.
                     </p>
                   </div>
@@ -640,30 +556,30 @@ export function BirdListPlaceholder() {
               </MapErrorBoundary>
 
               <div className={`absolute inset-x-0 bottom-0 rounded-t-3xl bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_24px_rgba(78,54,38,0.2)] ${SHEET_HEIGHT_CLASS[sheetMode]}`}>
-                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#c8b292]" />
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-app-border-muted" />
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="font-kodchasan text-sm font-bold text-[#4e3626]">
+                  <p className="font-kodchasan text-sm font-bold text-app-text">
                     {visibleBirds.length} birds nearby
                   </p>
                   <div className="flex gap-1">
                     <button
                       type="button"
                       onClick={() => setSheetMode('collapsed')}
-                      className="rounded-lg border border-[#c8b292]/70 px-2 py-1 font-kodchasan text-xs text-[#4e3626]"
+                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
                     >
                       Peek
                     </button>
                     <button
                       type="button"
                       onClick={() => setSheetMode('half')}
-                      className="rounded-lg border border-[#c8b292]/70 px-2 py-1 font-kodchasan text-xs text-[#4e3626]"
+                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
                     >
                       Cards
                     </button>
                     <button
                       type="button"
                       onClick={() => setSheetMode('expanded')}
-                      className="rounded-lg border border-[#c8b292]/70 px-2 py-1 font-kodchasan text-xs text-[#4e3626]"
+                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
                     >
                       Full
                     </button>
@@ -671,7 +587,7 @@ export function BirdListPlaceholder() {
                 </div>
                 <div className="h-[calc(100%-3.5rem)] overflow-y-auto pr-1">
                   {sheetMode === 'collapsed' ? (
-                    <p className="font-kodchasan text-sm text-[#4e3626]/70">
+                    <p className="font-kodchasan text-sm text-app-text/70">
                       Pull up to preview nearby birds.
                     </p>
                   ) : (

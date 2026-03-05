@@ -9,7 +9,7 @@ export function FeatherFinderMark({ showName = true, className = '' }: FeatherFi
       <svg
         viewBox="0 0 24 24"
         fill="none"
-        className={`${showName ? 'size-6' : 'size-7'} text-[#1d3b2a]`}
+        className={`${showName ? 'size-6' : 'size-7'} text-app-accent-secondary-hover`}
         aria-hidden
       >
         <path
@@ -20,7 +20,7 @@ export function FeatherFinderMark({ showName = true, className = '' }: FeatherFi
         />
       </svg>
       {showName && (
-        <span className="font-kodchasan text-[19px] font-bold text-[#1d3b2a]">
+        <span className="font-kodchasan text-[19px] font-bold text-app-accent-secondary-hover">
           FeatherFinder
         </span>
       )}

@@ -4,10 +4,11 @@ import { useLocation } from '@/context/LocationContext'
 import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
 import { useLocationSearchController } from '@/features/location-search/useLocationSearchController'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { palette } from '@/theme/palette'
 
 function SearchIcon() {
   return (
-    <svg className="size-full" fill="none" viewBox="0 0 24 24" stroke="#006E63" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="size-full" fill="none" viewBox="0 0 24 24" stroke={palette.accentSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 17L21 21" />
       <circle cx="11" cy="11" r="8" />
     </svg>
@@ -16,7 +17,7 @@ function SearchIcon() {
 
 function LogInIcon() {
   return (
-    <svg className="size-full" fill="none" viewBox="0 0 19 19" stroke="#006E63" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="size-full" fill="none" viewBox="0 0 19 19" stroke={palette.accentSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15.0417 9.5H9.5M9.5 9.5L11.875 11.875M9.5 9.5L11.875 7.125" />
       <path d="M15.0417 4.75V3.95833C15.0417 3.08388 14.3328 2.375 13.4583 2.375H5.54167C4.66722 2.375 3.95833 3.08388 3.95833 3.95833V15.0417C3.95833 15.9161 4.66722 16.625 5.54167 16.625H13.4583C14.3328 16.625 15.0417 15.9161 15.0417 15.0417V14.25" />
     </svg>
@@ -45,8 +46,8 @@ function renderPrimarySuggestionText(primary: string, rawQuery: string) {
     const predicted = primary.slice(query.length)
     return (
       <span>
-        <span className="text-[#4e3626]/70">{typed}</span>
-        {predicted && <span className="font-semibold text-[#4e3626]">{predicted}</span>}
+        <span className="text-app-text/70">{typed}</span>
+        {predicted && <span className="font-semibold text-app-text">{predicted}</span>}
       </span>
     )
   }
@@ -58,7 +59,7 @@ function renderPrimarySuggestionText(primary: string, rawQuery: string) {
     return (
       <span>
         {before}
-        <span className="font-semibold text-[#4e3626]">{matched}</span>
+        <span className="font-semibold text-app-text">{matched}</span>
         {after}
       </span>
     )
@@ -107,7 +108,7 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-linear-to-t from-[#f6f0e7] from-35% to-[rgba(200,178,146,0.8)]">
+    <div className="flex min-h-screen flex-col bg-linear-to-t from-app-background from-35% to-app-border-muted/80">
       {/* Header */}
       <header className="fixed left-0 right-0 top-0 z-50 flex items-start justify-between px-5 pt-10">
         <FeatherFinderMark showName />
@@ -116,7 +117,7 @@ export function WelcomeScreen() {
           onClick={handleLogin}
           className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-80"
         >
-          <span className="font-kodchasan text-[19px] font-bold text-[#006e63] underline">
+          <span className="font-kodchasan text-[19px] font-bold text-app-accent-secondary underline">
             Log in
           </span>
           <span className="size-4.75">
@@ -131,14 +132,14 @@ export function WelcomeScreen() {
       {/* Bottom content - fixed at bottom */}
       <div className="relative z-10 flex flex-col items-center gap-4 px-5 pb-8 pt-4">
         {/* Bird name placeholder (static for simplified hero) */}
-        <p className="font-kodchasan text-[14px] font-medium text-[#4e3626]">
+        <p className="font-kodchasan text-[14px] font-medium text-app-text">
           Tropical Royal Flycatcher
         </p>
 
         {/* Carousel indicator placeholder (static dots) */}
         <div className="flex items-center gap-2.25">
           <div className="h-1.75 w-10.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.8)]">
-            <div className="h-1.75 w-1/4 rounded-bl-lg rounded-tl-lg bg-[#c8b292]" />
+            <div className="h-1.75 w-1/4 rounded-bl-lg rounded-tl-lg bg-app-border-muted" />
           </div>
           <div className="h-1.75 w-2.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.5)]" />
           <div className="h-1.75 w-2.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.5)]" />
@@ -147,16 +148,16 @@ export function WelcomeScreen() {
         {/* Location search */}
         <form onSubmit={handleLocationSubmit} className="relative w-full max-w-200">
           {search.isOpen && (search.isLoading || search.suggestions.length > 0) && (
-            <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-[#c8b292]/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]">
+            <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-app-border-muted/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]">
               {search.isLoading && (
-                <p className="px-4 py-2 text-sm text-[#4e3626]/70">Searching locations...</p>
+                <p className="px-4 py-2 text-sm text-app-text/70">Searching locations...</p>
               )}
               {search.suggestions.length > 0 && (
                 <ul
                   id={search.listboxId}
                   role="listbox"
                   aria-label="Location suggestions"
-                  className="divide-y divide-[#c8b292]/35"
+                  className="divide-y divide-app-border-muted/35"
                 >
                   {search.suggestions.map((suggestion, index) => (
                     <li key={`${suggestion.label}-${suggestion.lat}-${suggestion.lng}`}>
@@ -171,17 +172,17 @@ export function WelcomeScreen() {
                           search.selectSuggestion(suggestion)
                         }}
                         aria-label={suggestion.label}
-                        className={`w-full px-4 py-2 text-left transition-colors hover:bg-[#f6f0e7] ${search.activeIndex === index ? 'bg-[#f6f0e7]' : ''}`}
+                        className={`w-full px-4 py-2 text-left transition-colors hover:bg-app-background ${search.activeIndex === index ? 'bg-app-background' : ''}`}
                       >
                         {(() => {
                           const { primary, scope } = splitSuggestionLabel(suggestion.label)
                           return (
                             <>
-                              <p className="font-kodchasan text-sm text-[#4e3626]">
+                              <p className="font-kodchasan text-sm text-app-text">
                                 {renderPrimarySuggestionText(primary, search.query)}
                               </p>
                               {scope && (
-                                <p className="mt-0.5 pl-2 font-kodchasan text-xs italic text-[#4e3626]/60">
+                                <p className="mt-0.5 pl-2 font-kodchasan text-xs italic text-app-text/60">
                                   in {scope}
                                 </p>
                               )}
@@ -209,7 +210,7 @@ export function WelcomeScreen() {
               onBlur={() => window.setTimeout(() => search.setIsOpen(false), 120)}
               onFocus={() => search.setIsOpen(true)}
               placeholder="Search by city, postal code, or address"
-              className="min-w-0 flex-1 bg-transparent font-kodchasan text-[19px] text-[#4e3626] outline-none placeholder:text-[rgba(78,54,38,0.6)]"
+              className="min-w-0 flex-1 bg-transparent font-kodchasan text-[19px] text-app-text outline-none placeholder:text-app-text/60"
               aria-label="Location search"
               disabled={isGeoLoading || search.isSubmitting}
             />
@@ -233,25 +234,25 @@ export function WelcomeScreen() {
             type="button"
             onClick={handleDiscoverNearby}
             disabled={isGeoLoading}
-            className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-[#006e63] transition-opacity hover:opacity-80 disabled:opacity-50 ${isGeoLoading ? 'no-underline' : 'underline'}`}
+            className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-app-accent-secondary transition-opacity hover:opacity-80 disabled:opacity-50 ${isGeoLoading ? 'no-underline' : 'underline'}`}
           >
             {isGeoLoading && (
-              <span className="size-5 animate-spin rounded-full border-2 border-[#006e63] border-t-transparent" aria-hidden />
+              <span className="size-5 animate-spin rounded-full border-2 border-app-accent-secondary border-t-transparent" aria-hidden />
             )}
             {isGeoLoading ? 'Finding your location...' : 'Discover birds near you'}
           </button>
           {isGeoLoading && (
-            <p className="text-center text-sm text-[#4e3626]/80">
+            <p className="text-center text-sm text-app-text/80">
               Check your browser for a location permission prompt. If nothing appears, enter a location while we wait ({timeoutSeconds}s).
             </p>
           )}
           {isGeoDenied && (
-            <p className="text-center text-sm text-[#4e3626]/80">
+            <p className="text-center text-sm text-app-text/80">
               Location access was denied. Allow location in your browser settings, or enter a location instead.
             </p>
           )}
           {isGeoUnavailable && geoError && (
-            <p className="text-center text-sm text-[#4e3626]/80">
+            <p className="text-center text-sm text-app-text/80">
               {geoError}{' '}You can retry with Discover birds near you, or enter a location instead.
             </p>
           )}
