@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { LocationProvider } from '@/context/LocationContext'
 import App from '@/app/App'
 import { geocodeLocation, searchLocationSuggestions } from '@/services/geocoding'
+import type { GeolocationResult } from '@/hooks/useGeolocation'
 
 // Mock useGeolocation
 const mockRequestLocation = vi.fn()
@@ -13,7 +14,7 @@ const mockUseGeolocation = vi.fn(() => ({
   coords: null,
   error: null,
   requestLocation: mockRequestLocation,
-}))
+}) as GeolocationResult)
 
 vi.mock('@/hooks/useGeolocation', () => ({
   useGeolocation: () => mockUseGeolocation(),
@@ -52,7 +53,7 @@ describe('WelcomeScreen', () => {
       coords: null,
       error: null,
       requestLocation: mockRequestLocation,
-    })
+    } as GeolocationResult)
   })
 
   describe('location search flow', () => {
@@ -120,7 +121,7 @@ describe('WelcomeScreen', () => {
         coords: null,
         error: null,
         requestLocation: mockRequestLocation,
-      })
+      } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText('Finding your location...')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /finding your location/i })).toBeDisabled()
@@ -133,7 +134,7 @@ describe('WelcomeScreen', () => {
         coords: null,
         error: 'Location access was denied.',
         requestLocation: mockRequestLocation,
-      })
+      } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText(/Location access was denied/)).toBeInTheDocument()
       expect(screen.getByText(/enter a location instead/)).toBeInTheDocument()
@@ -145,7 +146,7 @@ describe('WelcomeScreen', () => {
         coords: null,
         error: 'Location request timed out.',
         requestLocation: mockRequestLocation,
-      })
+      } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText(/Location request timed out/)).toBeInTheDocument()
       expect(screen.getByText(/You can retry with Discover birds near you/)).toBeInTheDocument()
@@ -157,7 +158,7 @@ describe('WelcomeScreen', () => {
         coords: { lat: 45.5, lng: -122.6 },
         error: null,
         requestLocation: mockRequestLocation,
-      })
+      } as GeolocationResult)
       render(<TestApp />)
       await waitFor(
         () => {

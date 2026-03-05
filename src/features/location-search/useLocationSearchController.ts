@@ -34,12 +34,10 @@ function readStoredSuggestionBias(): SuggestionBias | null {
     const raw = storage.getItem(SUGGESTION_BIAS_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredBias>
-    const isValid = typeof parsed.lat === 'number'
-      && typeof parsed.lng === 'number'
-      && typeof parsed.ts === 'number'
-    if (!isValid) return null
-    if (Date.now() - parsed.ts > BIAS_TTL_MS) return null
-    return { lat: parsed.lat, lng: parsed.lng }
+    const { lat, lng, ts } = parsed
+    if (typeof lat !== 'number' || typeof lng !== 'number' || typeof ts !== 'number') return null
+    if (Date.now() - ts > BIAS_TTL_MS) return null
+    return { lat, lng }
   } catch {
     return null
   }
