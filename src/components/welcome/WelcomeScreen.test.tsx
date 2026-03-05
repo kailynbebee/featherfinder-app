@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { LocationProvider } from '@/context/LocationContext'
 import App from '@/app/App'
+import { geocodeLocation, searchLocationSuggestions } from '@/services/geocoding'
 
 // Mock useGeolocation
 const mockRequestLocation = vi.fn()
@@ -19,6 +20,14 @@ vi.mock('@/hooks/useGeolocation', () => ({
   GEOLOCATION_TIMEOUT_MS: 30000,
 }))
 
+vi.mock('@/services/geocoding', () => ({
+  geocodeLocation: vi.fn(),
+  searchLocationSuggestions: vi.fn(),
+}))
+
+const mockGeocodeLocation = vi.mocked(geocodeLocation)
+const mockSearchLocationSuggestions = vi.mocked(searchLocationSuggestions)
+
 function TestApp() {
   return (
     <MemoryRouter initialEntries={['/']}>
@@ -32,6 +41,12 @@ function TestApp() {
 describe('WelcomeScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGeocodeLocation.mockResolvedValue({
+      lat: 40.7128,
+      lng: -74.006,
+      label: 'New York, New York, United States',
+    })
+    mockSearchLocationSuggestions.mockResolvedValue([])
     mockUseGeolocation.mockReturnValue({
       status: 'idle',
       coords: null,
@@ -40,19 +55,19 @@ describe('WelcomeScreen', () => {
     })
   })
 
-  describe('zip code flow', () => {
-    it('shows validation error for invalid zip', async () => {
+  describe('location search flow', () => {
+    it('shows validation error for invalid location query', async () => {
       render(<TestApp />)
-      const input = screen.getAllByPlaceholderText('Search by zip code')[0]
-      fireEvent.change(input, { target: { value: '1234' } })
+      const input = screen.getAllByPlaceholderText('Search by city, postal code, or address')[0]
+      fireEvent.change(input, { target: { value: 'a' } })
       fireEvent.click(screen.getAllByRole('button', { name: /search/i })[0])
-      expect(screen.getByText('Please enter a valid 5-digit zip code')).toBeInTheDocument()
+      expect(screen.getByText('Please enter a city, postal code, or address')).toBeInTheDocument()
     })
 
-    it('navigates to /birds and stores zip when valid zip is submitted', async () => {
+    it('navigates to /birds and stores resolved location when query is submitted', async () => {
       render(<TestApp />)
-      const input = screen.getAllByPlaceholderText('Search by zip code')[0]
-      fireEvent.change(input, { target: { value: '12345' } })
+      const input = screen.getAllByPlaceholderText('Search by city, postal code, or address')[0]
+      fireEvent.change(input, { target: { value: 'new york' } })
       fireEvent.click(screen.getAllByRole('button', { name: /search/i })[0])
       await waitFor(
         () => {
@@ -60,7 +75,34 @@ describe('WelcomeScreen', () => {
         },
         { timeout: 3000 }
       )
-      expect(screen.getByText(/Zip: 12345/)).toBeInTheDocument()
+      expect(mockGeocodeLocation).toHaveBeenCalledWith('new york', 'us')
+      expect(screen.getByText(/Location: New York, New York, United States/)).toBeInTheDocument()
+    })
+
+    it('shows autocomplete suggestions and navigates immediately on suggestion click', async () => {
+      mockSearchLocationSuggestions.mockResolvedValue([
+        {
+          lat: 48.8566,
+          lng: 2.3522,
+          label: 'Paris, Ile-de-France, France',
+        },
+      ])
+
+      render(<TestApp />)
+      const input = screen.getAllByPlaceholderText('Search by city, postal code, or address')[0]
+      fireEvent.change(input, { target: { value: 'par' } })
+
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' })).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' }))
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
+      })
+      expect(mockGeocodeLocation).not.toHaveBeenCalled()
+      expect(screen.getByText(/Location: Paris, Ile-de-France, France/)).toBeInTheDocument()
     })
   })
 
@@ -94,7 +136,7 @@ describe('WelcomeScreen', () => {
       })
       render(<TestApp />)
       expect(screen.getByText(/Location access was denied/)).toBeInTheDocument()
-      expect(screen.getByText(/enter a zip code instead/)).toBeInTheDocument()
+      expect(screen.getByText(/enter a location instead/)).toBeInTheDocument()
     })
 
     it('shows timeout message when request times out', () => {

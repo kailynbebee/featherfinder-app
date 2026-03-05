@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
-import { isValidZip, formatZipInput } from '@/lib/zipValidation'
+import { useLocationSearchController } from '@/features/location-search/useLocationSearchController'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
 function SearchIcon() {
@@ -23,30 +23,70 @@ function LogInIcon() {
   )
 }
 
+function splitSuggestionLabel(label: string): { primary: string; scope: string | null } {
+  const parts = label.split(',').map((part) => part.trim()).filter(Boolean)
+  if (parts.length === 0) return { primary: label, scope: null }
+  return {
+    primary: parts[0] ?? label,
+    scope: parts.length > 1 ? parts.slice(1).join(', ') : null,
+  }
+}
+
+function renderPrimarySuggestionText(primary: string, rawQuery: string) {
+  const query = rawQuery.trim()
+  if (!query) return <span>{primary}</span>
+
+  const primaryLower = primary.toLowerCase()
+  const queryLower = query.toLowerCase()
+  const matchIndex = primaryLower.indexOf(queryLower)
+
+  if (matchIndex === 0) {
+    const typed = primary.slice(0, query.length)
+    const predicted = primary.slice(query.length)
+    return (
+      <span>
+        <span className="text-[#4e3626]/70">{typed}</span>
+        {predicted && <span className="font-semibold text-[#4e3626]">{predicted}</span>}
+      </span>
+    )
+  }
+
+  if (matchIndex > 0) {
+    const before = primary.slice(0, matchIndex)
+    const matched = primary.slice(matchIndex, matchIndex + query.length)
+    const after = primary.slice(matchIndex + query.length)
+    return (
+      <span>
+        {before}
+        <span className="font-semibold text-[#4e3626]">{matched}</span>
+        {after}
+      </span>
+    )
+  }
+
+  return <span>{primary}</span>
+}
+
 export function WelcomeScreen() {
   const navigate = useNavigate()
-  const { setZipLocation, setGeoLocation } = useLocation()
+  const { setQueryLocation, setGeoLocation } = useLocation()
   const { status: geoStatus, coords, error: geoError, requestLocation } = useGeolocation()
+  const search = useLocationSearchController({
+    onCommitLocation: (location, query) => {
+      setQueryLocation(query, location.lat, location.lng, location.label)
+      navigate('/birds')
+    },
+  })
 
-  const [zipCode, setZipCode] = useState('')
-  const [zipError, setZipError] = useState<string | null>(null)
-
-  const validZip = isValidZip(zipCode)
   const isGeoLoading = geoStatus === 'loading'
   const isGeoSuccess = geoStatus === 'success'
   const isGeoDenied = geoStatus === 'denied'
   const isGeoUnavailable = geoStatus === 'unavailable' || geoStatus === 'error'
   const timeoutSeconds = Math.floor(GEOLOCATION_TIMEOUT_MS / 1000)
 
-  const handleZipSubmit = (e: React.FormEvent) => {
+  const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setZipError(null)
-    if (!validZip) {
-      setZipError('Please enter a valid 5-digit zip code')
-      return
-    }
-    setZipLocation(zipCode.trim())
-    navigate('/birds')
+    await search.handleSubmit()
   }
 
   const handleDiscoverNearby = () => {
@@ -104,29 +144,83 @@ export function WelcomeScreen() {
           <div className="h-1.75 w-2.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.5)]" />
         </div>
 
-        {/* Zip code search */}
-        <form onSubmit={handleZipSubmit} className="w-full max-w-200">
+        {/* Location search */}
+        <form onSubmit={handleLocationSubmit} className="relative w-full max-w-200">
+          {search.isOpen && (search.isLoading || search.suggestions.length > 0) && (
+            <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-[#c8b292]/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]">
+              {search.isLoading && (
+                <p className="px-4 py-2 text-sm text-[#4e3626]/70">Searching locations...</p>
+              )}
+              {search.suggestions.length > 0 && (
+                <ul
+                  id={search.listboxId}
+                  role="listbox"
+                  aria-label="Location suggestions"
+                  className="divide-y divide-[#c8b292]/35"
+                >
+                  {search.suggestions.map((suggestion, index) => (
+                    <li key={`${suggestion.label}-${suggestion.lat}-${suggestion.lng}`}>
+                      <button
+                        type="button"
+                        id={`${search.listboxId}-option-${index}`}
+                        role="option"
+                        aria-selected={search.activeIndex === index}
+                        onMouseEnter={() => search.setActiveIndex(index)}
+                        onClick={() => search.selectSuggestion(suggestion)}
+                        aria-label={suggestion.label}
+                        className={`w-full px-4 py-2 text-left transition-colors hover:bg-[#f6f0e7] ${search.activeIndex === index ? 'bg-[#f6f0e7]' : ''}`}
+                      >
+                        {(() => {
+                          const { primary, scope } = splitSuggestionLabel(suggestion.label)
+                          return (
+                            <>
+                              <p className="font-kodchasan text-sm text-[#4e3626]">
+                                {renderPrimarySuggestionText(primary, search.query)}
+                              </p>
+                              {scope && (
+                                <p className="mt-0.5 pl-2 font-kodchasan text-xs italic text-[#4e3626]/60">
+                                  in {scope}
+                                </p>
+                              )}
+                            </>
+                          )
+                        })()}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-4 rounded-[14px] bg-white px-6 py-4 shadow-[0px_0px_33px_3px_rgba(74,55,40,0.05)]">
             <input
               type="text"
-              inputMode="numeric"
-              value={zipCode}
-              onChange={(e) => setZipCode(formatZipInput(e.target.value))}
-              placeholder="Search by zip code"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls={search.listboxId}
+              aria-expanded={search.isOpen && search.suggestions.length > 0}
+              aria-activedescendant={search.activeDescendantId}
+              value={search.query}
+              onChange={(e) => search.handleInputChange(e.target.value)}
+              onKeyDown={search.handleKeyDown}
+              onBlur={() => window.setTimeout(() => search.setIsOpen(false), 120)}
+              onFocus={() => search.setIsOpen(true)}
+              placeholder="Search by city, postal code, or address"
               className="min-w-0 flex-1 bg-transparent font-kodchasan text-[19px] text-[#4e3626] outline-none placeholder:text-[rgba(78,54,38,0.6)]"
-              aria-label="Zip code"
-              disabled={isGeoLoading}
+              aria-label="Location search"
+              disabled={isGeoLoading || search.isSubmitting}
             />
             <button
               type="submit"
               className="shrink-0 size-6 cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50"
               aria-label="Search"
+              disabled={isGeoLoading || search.isSubmitting}
             >
               <SearchIcon />
             </button>
           </div>
-          {zipError && (
-            <p className="mt-2 text-sm text-red-600">{zipError}</p>
+          {search.error && (
+            <p className="mt-2 text-sm text-red-600">{search.error}</p>
           )}
         </form>
 
@@ -145,17 +239,17 @@ export function WelcomeScreen() {
           </button>
           {isGeoLoading && (
             <p className="text-center text-sm text-[#4e3626]/80">
-              Check your browser for a location permission prompt. If nothing appears, use a zip code while we wait ({timeoutSeconds}s).
+              Check your browser for a location permission prompt. If nothing appears, enter a location while we wait ({timeoutSeconds}s).
             </p>
           )}
           {isGeoDenied && (
             <p className="text-center text-sm text-[#4e3626]/80">
-              Location access was denied. Allow location in your browser settings, or enter a zip code instead.
+              Location access was denied. Allow location in your browser settings, or enter a location instead.
             </p>
           )}
           {isGeoUnavailable && geoError && (
             <p className="text-center text-sm text-[#4e3626]/80">
-              {geoError}{' '}You can retry with Discover birds near you, or enter a zip code instead.
+              {geoError}{' '}You can retry with Discover birds near you, or enter a location instead.
             </p>
           )}
         </div>
