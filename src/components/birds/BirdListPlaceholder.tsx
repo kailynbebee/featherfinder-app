@@ -1,4 +1,4 @@
-import { Component, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { getNearbyBirds, type BirdTag, type NearbyBird } from '@/services/nearbyBirds'
@@ -320,6 +320,15 @@ export function BirdListPlaceholder() {
     }
   }, [visibleBirds, selectedBirdId])
 
+  const mapFocusedBirdId = quickViewBird?.id ?? selectedBirdId
+  const listItemRefs = useRef<Record<string, HTMLLIElement | null>>({})
+
+  useEffect(() => {
+    const el = listItemRefs.current[selectedBirdId ?? '']
+    if (!selectedBirdId || !el || typeof el.scrollIntoView !== 'function') return
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selectedBirdId])
+
   function BirdCardSkeleton() {
     return (
       <div className="flex gap-4 rounded-xl p-4 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
@@ -386,7 +395,7 @@ export function BirdListPlaceholder() {
     return (
       <ul className={wrapperClassName ?? 'mt-4 space-y-3'}>
         {visibleBirds.map((bird) => (
-          <li key={bird.id}>
+          <li key={bird.id} ref={(el) => { listItemRefs.current[bird.id] = el }}>
             <BirdCard
               bird={bird}
               tags={tagsByBirdId.get(bird.id) ?? []}
@@ -494,7 +503,7 @@ export function BirdListPlaceholder() {
               >
                 <BirdMap
                   birds={visibleBirds}
-                  selectedBirdId={selectedBirdId}
+                  selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
                   className="h-full w-full"
                 />
@@ -539,7 +548,7 @@ export function BirdListPlaceholder() {
               >
                 <BirdMap
                   birds={visibleBirds}
-                  selectedBirdId={selectedBirdId}
+                  selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
                   className="h-full w-full"
                 />
