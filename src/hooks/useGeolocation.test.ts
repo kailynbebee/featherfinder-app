@@ -94,7 +94,7 @@ describe('useGeolocation', () => {
     })
 
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toBe('Location request timed out. Please try again or use a zip code.')
+    expect(result.current.error).toBe('Location request timed out. Please try again or enter a location.')
   })
 
   it('sets unavailable state when geolocation is not supported', () => {

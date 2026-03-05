@@ -35,23 +35,23 @@ const demoBirds = [
   },
 ]
 
-function SeedLocation({ zip }: { zip?: string }) {
-  const { setZipLocation } = useLocation()
+function SeedLocation({ query }: { query?: string }) {
+  const { setQueryLocation } = useLocation()
 
   useEffect(() => {
-    if (zip) {
-      setZipLocation(zip)
+    if (query) {
+      setQueryLocation(query, 40.7128, -74.006, 'New York, New York, United States')
     }
-  }, [zip, setZipLocation])
+  }, [query, setQueryLocation])
 
   return null
 }
 
-function TestApp({ initialPath, seedZip }: { initialPath: string; seedZip?: string }) {
+function TestApp({ initialPath, seedQuery }: { initialPath: string; seedQuery?: string }) {
   return (
     <MemoryRouter initialEntries={[initialPath]}>
       <LocationProvider>
-        <SeedLocation zip={seedZip} />
+        <SeedLocation query={seedQuery} />
         <App />
       </LocationProvider>
     </MemoryRouter>
@@ -77,7 +77,7 @@ describe('BirdListPlaceholder', () => {
   it('shows loading state while nearby birds are fetched', () => {
     mockGetNearbyBirds.mockImplementation(() => new Promise(() => {}))
 
-    render(<TestApp initialPath="/birds" seedZip="12345" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Finding nearby birds...').length).toBeGreaterThan(0)
@@ -86,7 +86,7 @@ describe('BirdListPlaceholder', () => {
   it('renders bird list when nearby birds load', async () => {
     mockGetNearbyBirds.mockResolvedValue([demoBirds[0]])
 
-    render(<TestApp initialPath="/birds" seedZip="12345" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
@@ -98,7 +98,7 @@ describe('BirdListPlaceholder', () => {
   it('renders empty state when service returns no birds', async () => {
     mockGetNearbyBirds.mockResolvedValue([])
 
-    render(<TestApp initialPath="/birds" seedZip="00000" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByText(/No birds found for this location yet/).length).toBeGreaterThan(0)
@@ -108,7 +108,7 @@ describe('BirdListPlaceholder', () => {
   it('renders error state when service fails', async () => {
     mockGetNearbyBirds.mockRejectedValue(new Error('Nearby bird service is temporarily unavailable.'))
 
-    render(<TestApp initialPath="/birds" seedZip="99999" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByText('Nearby bird service is temporarily unavailable.').length).toBeGreaterThan(0)
@@ -122,7 +122,7 @@ describe('BirdListPlaceholder', () => {
     window.innerWidth = 390
     window.dispatchEvent(new Event('resize'))
 
-    render(<TestApp initialPath="/birds" seedZip="12345" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
@@ -135,7 +135,7 @@ describe('BirdListPlaceholder', () => {
     const user = userEvent.setup()
     mockGetNearbyBirds.mockResolvedValue(demoBirds)
 
-    render(<TestApp initialPath="/birds" seedZip="12345" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
@@ -149,7 +149,7 @@ describe('BirdListPlaceholder', () => {
     const user = userEvent.setup()
     mockGetNearbyBirds.mockResolvedValue(demoBirds)
 
-    render(<TestApp initialPath="/birds" seedZip="12345" />)
+    render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /Bird marker red-tailed-hawk/i }).length).toBeGreaterThan(0)

@@ -46,7 +46,7 @@ export function useGeolocation(): GeolocationResult {
           setError('Could not determine your location.')
         } else if (err.code === 3) {
           setStatus('error')
-          setError('Location request timed out. Please try again or use a zip code.')
+          setError('Location request timed out. Please try again or enter a location.')
         } else {
           setStatus('error')
           setError('Could not get your location.')

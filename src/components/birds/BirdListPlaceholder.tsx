@@ -135,11 +135,7 @@ export function BirdListPlaceholder() {
     }
   }, [location])
 
-  const locationLabel = location
-    ? location.type === 'zip'
-      ? `Zip: ${location.value}`
-      : `Location: ${location.value.lat.toFixed(4)}, ${location.value.lng.toFixed(4)}`
-    : ''
+  const locationLabel = location ? `Location: ${location.label}` : ''
 
   const visibleBirds = useMemo(() => {
     let filtered = [...birds]
