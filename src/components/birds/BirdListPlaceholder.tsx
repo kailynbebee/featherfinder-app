@@ -1,7 +1,7 @@
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
-import { getNearbyBirds, type BirdTag, type NearbyBird, type RarityTier } from '@/services/nearbyBirds'
+import { getNearbyBirds, isInWingspan, type BirdTag, type NearbyBird, type RarityTier } from '@/services/nearbyBirds'
 import { useBirdImage } from '@/hooks/useBirdImage'
 import { useBirdTags } from '@/hooks/useBirdTags'
 import { BirdTag as BirdTagChip } from '@/components/ui/BirdTag'
@@ -72,6 +72,7 @@ function BirdCard({
   selected,
   onSelect,
   onQuickView,
+  showWingspanMark,
 }: {
   bird: NearbyBird
   tags: readonly BirdTag[]
@@ -79,6 +80,7 @@ function BirdCard({
   selected: boolean
   onSelect: () => void
   onQuickView: () => void
+  showWingspanMark: boolean
 }) {
   const { imageUrl, isLoading } = useBirdImage(bird.id, bird.scientificName)
 
@@ -87,14 +89,24 @@ function BirdCard({
     onQuickView()
   }
 
+  const inWingspan = isInWingspan(bird.id)
+
   return (
     <button
       type="button"
       onClick={handleClick}
       aria-pressed={selected}
-      aria-label={`Bird card ${bird.id}`}
-      className={`flex w-full gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-[#dff6d8]' : 'bg-white/85 hover:bg-white'}`}
+      aria-label={`Bird card ${bird.id}${inWingspan ? ', in Wingspan' : ''}`}
+      className={`relative flex w-full gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-[#dff6d8]' : 'bg-white/85 hover:bg-white'}`}
     >
+      {showWingspanMark && inWingspan && (
+        <span
+          className="absolute right-3 top-3 font-serif text-sm font-bold text-[#4e3626]/60"
+          aria-label="In Wingspan"
+        >
+          W
+        </span>
+      )}
       <div
         className="shrink-0 overflow-hidden rounded-lg bg-[#c8b292]/30"
         style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE }}
@@ -143,13 +155,16 @@ function QuickViewOverlay({
   tags,
   rarity,
   onClose,
+  showWingspanMark,
 }: {
   bird: NearbyBird
   tags: readonly BirdTag[]
   rarity: RarityTier
   onClose: () => void
+  showWingspanMark: boolean
 }) {
   const { imageUrl, caption, isLoading } = useBirdImage(bird.id, bird.scientificName)
+  const inWingspan = isInWingspan(bird.id)
 
   useEffect(() => {
     const handlePopState = () => onClose()
@@ -177,6 +192,14 @@ function QuickViewOverlay({
         >
           <span className="text-xl">×</span>
         </button>
+        {showWingspanMark && inWingspan && (
+          <span
+            className="absolute right-12 top-8 font-serif text-base font-bold text-[#4e3626]/60"
+            aria-label="In Wingspan"
+          >
+            W
+          </span>
+        )}
         <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-[#4e3626]">
           {bird.commonName}
         </h2>
@@ -239,10 +262,37 @@ export function BirdListPlaceholder() {
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all')
   const [groupFilter, setGroupFilter] = useState<NearbyBird['group'] | 'all'>('all')
   const [recentOnly, setRecentOnly] = useState(false)
+  const [includeNonGameBirds, setIncludeNonGameBirds] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('distance')
   const [selectedBirdId, setSelectedBirdId] = useState<string | null>(null)
   const [quickViewBird, setQuickViewBird] = useState<NearbyBird | null>(null)
+  const [showFilterFade, setShowFilterFade] = useState(false)
+  const filterScrollRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
+
+  const updateFilterFade = useCallback(() => {
+    const el = filterScrollRef.current
+    if (!el) return
+    const hasOverflow = el.scrollWidth > el.clientWidth
+    const isAtEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+    setShowFilterFade(hasOverflow && !isAtEnd)
+  }, [])
+
+  useEffect(() => {
+    const el = filterScrollRef.current
+    if (!el) return
+    updateFilterFade()
+    el.addEventListener('scroll', updateFilterFade)
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(updateFilterFade)
+        : null
+    ro?.observe(el)
+    return () => {
+      el.removeEventListener('scroll', updateFilterFade)
+      ro?.disconnect()
+    }
+  }, [updateFilterFade])
 
   const openQuickView = (bird: NearbyBird) => {
     setQuickViewBird(bird)
@@ -303,6 +353,10 @@ export function BirdListPlaceholder() {
   const visibleBirds = useMemo(() => {
     let filtered = [...birds]
 
+    if (!includeNonGameBirds) {
+      filtered = filtered.filter((bird) => isInWingspan(bird.id))
+    }
+
     if (distanceFilter !== 'all') {
       filtered = filtered.filter((bird) => bird.distanceMiles <= Number(distanceFilter))
     }
@@ -322,7 +376,7 @@ export function BirdListPlaceholder() {
     }
 
     return filtered
-  }, [birds, distanceFilter, groupFilter, recentOnly, sortMode])
+  }, [birds, includeNonGameBirds, distanceFilter, groupFilter, recentOnly, sortMode])
 
   useEffect(() => {
     if (!selectedBirdId || !visibleBirds.some((bird) => bird.id === selectedBirdId)) {
@@ -413,6 +467,7 @@ export function BirdListPlaceholder() {
               selected={selectedBirdId === bird.id}
               onSelect={() => setSelectedBirdId(bird.id)}
               onQuickView={() => openQuickView(bird)}
+              showWingspanMark={includeNonGameBirds}
             />
           </li>
         ))}
@@ -444,38 +499,71 @@ export function BirdListPlaceholder() {
         <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
           <p className="font-kodchasan text-sm text-[#4e3626]/60">Search birds, locations, or hotspots</p>
         </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {(['all', '10', '25'] as const).map((distance) => (
-            <button
-              key={distance}
-              type="button"
-              onClick={() => setDistanceFilter(distance)}
-              className={`shrink-0 rounded-xl border px-3 py-2 font-kodchasan text-sm ${distanceFilter === distance ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+        <div className="mt-3 flex items-stretch gap-2 pb-1">
+          <div className="relative flex min-w-0 flex-1 items-center">
+            <div
+              ref={filterScrollRef}
+              className="flex h-10 w-full items-center overflow-x-auto overflow-y-hidden"
             >
-              {distance === 'all' ? 'All distances' : `Under ${distance} mi`}
-            </button>
-          ))}
-          {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group) => (
-            <button
-              key={group}
-              type="button"
-              onClick={() => setGroupFilter(group)}
-              className={`shrink-0 rounded-xl border px-3 py-2 font-kodchasan text-sm ${groupFilter === group ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
-            >
-              {group === 'all' ? 'All groups' : group}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setRecentOnly((value) => !value)}
-            className={`shrink-0 rounded-xl border px-3 py-2 font-kodchasan text-sm ${recentOnly ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
-          >
-            Last 24h
-          </button>
+              <div className="flex h-10 items-center gap-2 pr-12">
+              {(['all', '10', '25'] as const).map((distance) => (
+                <button
+                  key={distance}
+                  type="button"
+                  onClick={() => setDistanceFilter(distance)}
+                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                >
+                  {distance === 'all' ? 'All distances' : `Under ${distance} mi`}
+                </button>
+              ))}
+              {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group) => (
+                <button
+                  key={group}
+                  type="button"
+                  onClick={() => setGroupFilter(group)}
+                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${groupFilter === group ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                >
+                  {group === 'all' ? 'All groups' : group}
+                </button>
+              ))}
+              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-[#c8b292]/70" role="group" aria-label="Wingspan bird filter">
+                <button
+                  type="button"
+                  onClick={() => setIncludeNonGameBirds(false)}
+                  aria-pressed={!includeNonGameBirds}
+                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-[#dff6d8] text-[#1d3b2a]' : 'bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                >
+                  Wingspan birds
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIncludeNonGameBirds(true)}
+                  aria-pressed={includeNonGameBirds}
+                  className={`flex h-10 items-center border-l border-[#c8b292]/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-[#dff6d8] text-[#1d3b2a]' : 'bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+                >
+                  All birds
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRecentOnly((value) => !value)}
+                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-[#1d3b2a] bg-[#dff6d8] text-[#1d3b2a]' : 'border-[#c8b292]/70 bg-white text-[#4e3626] hover:bg-[#f6f0e7]'}`}
+              >
+                Last 24h
+              </button>
+              </div>
+            </div>
+            {showFilterFade && (
+              <div
+                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-gradient-to-r from-transparent to-[#f6f0e7]"
+                aria-hidden
+              />
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setSortMode((mode) => (mode === 'distance' ? 'recent' : 'distance'))}
-            className="shrink-0 rounded-xl border border-[#c8b292]/70 bg-white px-3 py-2 font-kodchasan text-sm text-[#4e3626] hover:bg-[#f6f0e7]"
+            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-[#c8b292]/70 bg-white px-3 font-kodchasan text-sm text-[#4e3626] hover:bg-[#f6f0e7]"
           >
             Sort: {sortMode === 'distance' ? 'Distance' : 'Recent'}
           </button>
@@ -600,6 +688,7 @@ export function BirdListPlaceholder() {
           tags={tagsByBirdId.get(quickViewBird.id) ?? []}
           rarity={rarityByBirdId.get(quickViewBird.id) ?? 'uncommon'}
           onClose={closeQuickView}
+          showWingspanMark={includeNonGameBirds}
         />
       )}
     </div>

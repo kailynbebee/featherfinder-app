@@ -6,14 +6,18 @@ import App from '@/app/App'
 import { LocationProvider } from '@/context/LocationContext'
 import { getNearbyBirds } from '@/services/nearbyBirds'
 
-vi.mock('@/services/nearbyBirds', () => ({
-  getNearbyBirds: vi.fn(),
-}))
+vi.mock('@/services/nearbyBirds', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/nearbyBirds')>()
+  return {
+    ...actual,
+    getNearbyBirds: vi.fn(),
+  }
+})
 
 const mockGetNearbyBirds = vi.mocked(getNearbyBirds)
 const demoBirds = [
   {
-    id: 'northern-cardinal',
+    id: 'norcar',
     commonName: 'Northern Cardinal',
     scientificName: 'Cardinalis cardinalis',
     distanceMiles: 1.2,
@@ -23,7 +27,7 @@ const demoBirds = [
     lastSeenHoursAgo: 2,
   },
   {
-    id: 'red-tailed-hawk',
+    id: 'rethaw',
     commonName: 'Red-tailed Hawk',
     scientificName: 'Buteo jamaicensis',
     distanceMiles: 8.4,
@@ -128,7 +132,7 @@ describe('BirdListPlaceholder', () => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
     })
     await user.click(screen.getAllByRole('button', { name: 'List' })[0])
-    expect(screen.getAllByRole('button', { name: /Bird card northern-cardinal/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Bird card norcar/i }).length).toBeGreaterThan(0)
   })
 
   it('filters list by bird group', async () => {
@@ -152,13 +156,13 @@ describe('BirdListPlaceholder', () => {
     render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /Bird marker red-tailed-hawk/i }).length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('button', { name: /Bird marker rethaw/i }).length).toBeGreaterThan(0)
     })
 
-    await user.click(screen.getAllByRole('button', { name: /Bird marker red-tailed-hawk/i })[0])
+    await user.click(screen.getAllByRole('button', { name: /Bird marker rethaw/i })[0])
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /Bird card red-tailed-hawk/i })[0]).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getAllByRole('button', { name: /Bird card rethaw/i })[0]).toHaveAttribute('aria-pressed', 'true')
     })
   })
 })
