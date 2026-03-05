@@ -1,10 +1,9 @@
-import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from '@/app/App'
-import { LocationProvider, useLocation } from '@/context/LocationContext'
+import { LocationProvider } from '@/context/LocationContext'
 import { getNearbyBirds } from '@/services/nearbyBirds'
 
 vi.mock('@/services/nearbyBirds', () => ({
@@ -35,23 +34,24 @@ const demoBirds = [
   },
 ]
 
-function SeedLocation({ query }: { query?: string }) {
-  const { setQueryLocation } = useLocation()
-
-  useEffect(() => {
-    if (query) {
-      setQueryLocation(query, 40.7128, -74.006, 'New York, New York, United States')
-    }
-  }, [query, setQueryLocation])
-
-  return null
+const seededLocation = {
+  source: 'query' as const,
+  query: 'new york',
+  lat: 40.7128,
+  lng: -74.006,
+  label: 'New York, New York, United States',
 }
 
-function TestApp({ initialPath, seedQuery }: { initialPath: string; seedQuery?: string }) {
+function TestApp({
+  initialPath,
+  seedQuery,
+}: {
+  initialPath: string
+  seedQuery?: string
+}) {
   return (
     <MemoryRouter initialEntries={[initialPath]}>
-      <LocationProvider>
-        <SeedLocation query={seedQuery} />
+      <LocationProvider initialLocation={seedQuery ? seededLocation : null}>
         <App />
       </LocationProvider>
     </MemoryRouter>
@@ -66,11 +66,11 @@ describe('BirdListPlaceholder', () => {
     window.dispatchEvent(new Event('resize'))
   })
 
-  it('shows recovery path when /birds is opened without a location', async () => {
+  it('redirects to welcome screen when /birds is opened without a location', async () => {
     render(<TestApp initialPath="/birds" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Choose a location first so we can find birds nearby/)).toBeInTheDocument()
+      expect(screen.getByText(/Discover birds near you/)).toBeInTheDocument()
     })
   })
 

@@ -256,6 +256,13 @@ export function BirdListPlaceholder() {
     }
   }
 
+  // When location context is lost (e.g. after reload), redirect to welcome
+  useEffect(() => {
+    if (!location) {
+      navigate('/', { replace: true })
+    }
+  }, [location, navigate])
+
   useEffect(() => {
     if (!location) return
 
@@ -414,21 +421,7 @@ export function BirdListPlaceholder() {
   }
 
   if (!location) {
-    return (
-      <div className="flex min-h-screen flex-col bg-linear-to-t from-[#f6f0e7] from-35% to-[rgba(200,178,146,0.8)] p-6">
-        <h1 className="font-kodchasan text-2xl font-bold text-[#4e3626]">Birds Near You</h1>
-        <p className="mt-4 font-kodchasan text-sm text-[#4e3626]/70">
-          Choose a location first so we can find birds nearby.
-        </p>
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="mt-4 self-start font-kodchasan text-[#006e63] underline hover:opacity-80"
-        >
-          Back to welcome
-        </button>
-      </div>
-    )
+    return null
   }
 
   return (

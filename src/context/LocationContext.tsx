@@ -19,8 +19,14 @@ type LocationContextValue = {
 
 const LocationContext = createContext<LocationContextValue | null>(null)
 
-export function LocationProvider({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useState<LocationValue | null>(null)
+export function LocationProvider({
+  children,
+  initialLocation = null,
+}: {
+  children: ReactNode
+  initialLocation?: LocationValue | null
+}) {
+  const [location, setLocation] = useState<LocationValue | null>(initialLocation)
 
   const setQueryLocation = useCallback((query: string, lat: number, lng: number, label: string) => {
     setLocation({ source: 'query', query, lat, lng, label })
