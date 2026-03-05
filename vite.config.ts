@@ -1,6 +1,7 @@
 import path from 'path'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { defineConfig, loadEnv } from 'vite'
 import { geocodeOne, getSuggestions, parseSuggestRequest } from './server/location/suggest'
 
 function sendJson(res: { statusCode: number; setHeader: (name: string, value: string) => void; end: (body: string) => void }, statusCode: number, payload: unknown) {
@@ -8,6 +9,8 @@ function sendJson(res: { statusCode: number; setHeader: (name: string, value: st
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
 }
+
+const EBIRD_BASE = 'https://api.ebird.org/v2'
 
 function locationApiPlugin() {
   return {
@@ -47,20 +50,66 @@ function locationApiPlugin() {
         }
         sendJson(res, 200, { location: result })
       })
+
+      server.middlewares.use('/api/birds/nearby', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const apiKey = process.env.EBIRD_API_KEY
+        if (!apiKey?.trim()) {
+          sendJson(res, 503, { error: 'eBird API key not configured. Set EBIRD_API_KEY in .env' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const lat = url.searchParams.get('lat')
+        const lng = url.searchParams.get('lng')
+        const dist = url.searchParams.get('dist') ?? '25'
+        const back = url.searchParams.get('back') ?? '14'
+        if (!lat || !lng) {
+          sendJson(res, 400, { error: 'lat and lng are required' })
+          return
+        }
+        const ebirdUrl = new URL(`${EBIRD_BASE}/data/obs/geo/recent`)
+        ebirdUrl.searchParams.set('lat', lat)
+        ebirdUrl.searchParams.set('lng', lng)
+        ebirdUrl.searchParams.set('dist', dist)
+        ebirdUrl.searchParams.set('back', back)
+        ebirdUrl.searchParams.set('maxResults', '100')
+        ebirdUrl.searchParams.set('fmt', 'json')
+        try {
+          const ebirdRes = await fetch(ebirdUrl.toString(), {
+            headers: { 'X-eBirdApiToken': apiKey },
+          })
+          const data = await ebirdRes.json()
+          if (!ebirdRes.ok) {
+            const msg = typeof data?.message === 'string' ? data.message : 'eBird API error'
+            sendJson(res, ebirdRes.status === 401 ? 502 : 502, { error: msg })
+            return
+          }
+          sendJson(res, 200, data)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to fetch from eBird'
+          sendJson(res, 502, { error: msg })
+        }
+      })
     },
   }
 }
 
-export default {
-  plugins: [react(), tailwindcss(), locationApiPlugin()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  Object.assign(process.env, loadEnv(mode, process.cwd(), ''))
+  return {
+    plugins: [react(), tailwindcss(), locationApiPlugin()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.{ts,tsx}'],
-  },
-}
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'server/**/*.{test,spec}.{ts,tsx}'],
+    },
+  }
+})
