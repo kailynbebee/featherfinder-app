@@ -2,7 +2,7 @@
 
 A birding companion app that bridges the board game Wingspan and your local environment. Discover which birds from the game live near you, track which ones you've seen and played, and grow your love of nature.
 
-Built with React, Vite, Tailwind CSS, Leaflet + OpenStreetMap, and (planned) Supabase and eBird API.
+Built with React, Vite, Tailwind CSS, Leaflet + OpenStreetMap, and the eBird API.
 
 **Language:** English only for now; internationalization (i18n) and additional languages are planned for the future.
 
