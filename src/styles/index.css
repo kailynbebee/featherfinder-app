@@ -3,18 +3,18 @@
 @theme {
   --font-kodchasan: 'Kodchasan', sans-serif;
 
-  /* FeatherFinder app theme */
+  /* FeatherFinder app theme — Royal Flycatcher + Khroma (accessible) */
   --color-app-background: #f5f0e8;
   --color-app-surface: #faf6ef;
   --color-app-surface-light: #fffdf8;
-  --color-app-text: #4a3728;
-  --color-app-text-muted: #7a6b5a;
-  --color-app-accent: #d94420;
-  --color-app-accent-hover: #bf5b2e;
+  --color-app-text: #3d3a2e;
+  --color-app-text-muted: #6d674c;
+  --color-app-accent: #b54837;
+  --color-app-accent-hover: #913d10;
   --color-app-accent-secondary: #2a8c82;
   --color-app-accent-secondary-hover: #1b6b63;
   --color-app-border: #d4c9b8;
-  --color-app-border-muted: #c4b396;
+  --color-app-border-muted: #bb9888;
   --color-app-dot-accent: #1a1a1a;
 }
 

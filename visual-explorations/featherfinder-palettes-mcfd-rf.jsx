@@ -49,6 +49,30 @@ const palettes = {
     text: "#4A3728",
     textLight: "#7A6B5A",
   },
+  rfKhroma: {
+    name: "Royal Flycatcher + Khroma",
+    subtitle: "RF warmth + Khroma accessible contrast",
+    bgDescription: "Same warm cream — Khroma-inspired accents for WCAG",
+    colors: [
+      { name: "Warm Cream", hex: "#F5F0E8", role: "Background", text: "#1a1a1a" },
+      { name: "Khroma Coral", hex: "#B54837", role: "Primary / CTA", text: "#fff" },
+      { name: "Burnt Sienna", hex: "#913D10", role: "CTA Hover", text: "#fff" },
+      { name: "Jungle Teal", hex: "#2A8C82", role: "Secondary", text: "#fff" },
+      { name: "Deep Teal", hex: "#1B6B63", role: "Headers / Nav", text: "#fff" },
+      { name: "Khroma Taupe", hex: "#BB9888", role: "Borders", text: "#1a1a1a" },
+      { name: "Deep Brown", hex: "#3D3A2E", role: "Body text", text: "#fff" },
+      { name: "Olive Brown", hex: "#6D674C", role: "Muted text", text: "#fff" },
+      { name: "Parchment", hex: "#FAF6EF", role: "Card / Surface", text: "#1a1a1a" },
+      { name: "Ivory White", hex: "#FFFDF8", role: "Input", text: "#1a1a1a" },
+    ],
+    heatGradient: ["#BB9888", "#913D10", "#B54837"],
+    accent: "#B54837",
+    accentHover: "#913D10",
+    bg: "#F5F0E8",
+    surface: "#FAF6EF",
+    text: "#3D3A2E",
+    textLight: "#6D674C",
+  },
 };
 
 function DotPattern({ color = "#1A1A1A", opacity = 0.08 }) {
@@ -238,7 +262,7 @@ function MiniMockup({ palette, id }) {
 }
 
 export default function FeatherFinderPalettes() {
-  const [active, setActive] = useState("mcfd");
+  const [active, setActive] = useState("rfKhroma");
 
   return (
     <div style={{
@@ -302,23 +326,23 @@ export default function FeatherFinderPalettes() {
           borderRadius: 16,
           padding: 24,
           marginBottom: 20,
-          border: `1px solid ${active === "mcfd" ? "#e0e0e0" : "#d4c9b8"}`,
+          border: `1px solid ${active === "mcfd" ? "#e0e0e0" : "#bb9888"}`,
           position: "relative",
           overflow: "hidden",
         }}>
-          {active === "rf" && <DotPattern color="#4A3728" opacity={0.04} />}
+          {(active === "rf" || active === "rfKhroma") && <DotPattern color="#4A3728" opacity={0.04} />}
           <div style={{ position: "relative" }}>
             <h2 style={{
               fontSize: 20, fontWeight: 700, margin: "0 0 4px",
               color: palettes[active].text,
-              fontFamily: active === "rf" ? "'Libre Baskerville', Georgia, serif" : undefined,
+              fontFamily: (active === "rf" || active === "rfKhroma") ? "'Libre Baskerville', Georgia, serif" : undefined,
             }}>
               {palettes[active].name}
             </h2>
             <p style={{
               color: palettes[active].textLight,
               fontSize: 13, margin: "0 0 16px",
-              fontStyle: active === "rf" ? "italic" : undefined,
+              fontStyle: (active === "rf" || active === "rfKhroma") ? "italic" : undefined,
             }}>
               {palettes[active].subtitle}
             </p>
