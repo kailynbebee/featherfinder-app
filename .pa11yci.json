@@ -1,0 +1,20 @@
+{
+  "defaults": {
+    "standard": "WCAG2AAA",
+    "timeout": 5000,
+    "viewport": { "width": 1280, "height": 720 },
+    "runners": ["axe", "htmlcs"],
+    "includeWarnings": true,
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox"]
+    },
+    "reporters": [
+      "cli",
+      [
+        "pa11y-ci-reporter-html",
+        { "destination": "./pa11y-report", "includeZeroIssues": true }
+      ]
+    ]
+  },
+  "urls": ["http://localhost:4173/", "http://localhost:4173/birds"]
+}

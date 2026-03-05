@@ -12,7 +12,9 @@
     "test:run": "vitest run",
     "update-wingspan-birds": "tsx scripts/update-wingspan-birds.ts",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:a11y": "start-server-and-test 'npm run build && npm run preview' http://localhost:4173 pa11y-ci",
+    "test:a11y:dev": "start-server-and-test dev http://localhost:5173 'pa11y-ci -c .pa11yci.dev.json'"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -36,7 +38,10 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
+    "pa11y-ci": "^4.1.0",
+    "pa11y-ci-reporter-html": "^8.0.1",
     "playwright": "^1.58.2",
+    "start-server-and-test": "^2.1.5",
     "storybook": "^10.2.15",
     "tailwindcss": "^4.1.12",
     "tsx": "^4.21.0",
