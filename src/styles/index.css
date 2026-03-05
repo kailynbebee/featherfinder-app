@@ -2,6 +2,20 @@
 
 @theme {
   --font-kodchasan: 'Kodchasan', sans-serif;
+
+  /* FeatherFinder app theme */
+  --color-app-background: #f5f0e8;
+  --color-app-surface: #faf6ef;
+  --color-app-surface-light: #fffdf8;
+  --color-app-text: #4a3728;
+  --color-app-text-muted: #7a6b5a;
+  --color-app-accent: #d94420;
+  --color-app-accent-hover: #bf5b2e;
+  --color-app-accent-secondary: #2a8c82;
+  --color-app-accent-secondary-hover: #1b6b63;
+  --color-app-border: #d4c9b8;
+  --color-app-border-muted: #c4b396;
+  --color-app-dot-accent: #1a1a1a;
 }
 
 * {
