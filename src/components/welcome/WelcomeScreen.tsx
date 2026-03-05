@@ -166,7 +166,10 @@ export function WelcomeScreen() {
                         role="option"
                         aria-selected={search.activeIndex === index}
                         onMouseEnter={() => search.setActiveIndex(index)}
-                        onClick={() => search.selectSuggestion(suggestion)}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          search.selectSuggestion(suggestion)
+                        }}
                         aria-label={suggestion.label}
                         className={`w-full px-4 py-2 text-left transition-colors hover:bg-[#f6f0e7] ${search.activeIndex === index ? 'bg-[#f6f0e7]' : ''}`}
                       >

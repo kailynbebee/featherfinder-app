@@ -96,7 +96,7 @@ describe('WelcomeScreen', () => {
         expect(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' })).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' }))
+      fireEvent.mouseDown(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' }))
 
       await waitFor(() => {
         expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
