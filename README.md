@@ -4,6 +4,8 @@ A birding companion app that bridges the board game Wingspan and your local envi
 
 Built with React, Vite, Tailwind CSS, Leaflet + OpenStreetMap, and (planned) Supabase and eBird API.
 
+**eBird integration:** Nearby birds are fetched from the [eBird API](https://ebird.org/api). Copy `.env.example` to `.env` and add your API key from [ebird.org/api/keygen](https://ebird.org/api/keygen). Without it, the birds page will show an error.
+
 ## Getting Started
 
 ```bash
@@ -15,7 +17,7 @@ npm run dev
 
 - **Welcome screen** — Enter your zip code or use geolocation to discover birds near you
 - **Location flow** — Zip validation (5-digit US) and browser geolocation with error handling
-- **Nearby birds results** — Loading/error/empty/success states with mock nearby-bird data
+- **Nearby birds results** — Loading/error/empty/success states with real eBird observations
 - **Responsive results shell** — Desktop split list/map layout and mobile Map/List modes
 - **Filter controls** — Distance, species group, recent sightings, and sort order
 - **Map/list sync** — Selecting a bird in the list or map keeps selection state aligned
@@ -31,6 +33,6 @@ npm run test:run   # Single run
 
 - `src/components/welcome/` — Welcome screen (zip input, Discover birds near you)
 - `src/components/birds/` — Results page shell, list cards, and map UI
-- `src/services/nearbyBirds.ts` — Mock nearby-birds adapter (ready for future eBird swap)
+- `src/services/nearbyBirds.ts` — Fetches nearby birds from eBird API via `/api/birds/nearby` proxy
 - `src/assets/images/birds/` — Bird photos for future feather SVG hero
 - `src/assets/feather-masks/` — Feather mask SVGs for future animation
