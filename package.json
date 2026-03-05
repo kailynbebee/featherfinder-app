@@ -4,12 +4,15 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/patch-react-leaflet.js",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "update-wingspan-birds": "tsx scripts/update-wingspan-birds.ts"
+    "update-wingspan-birds": "tsx scripts/update-wingspan-birds.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
@@ -19,6 +22,11 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^5.0.1",
+    "@storybook/addon-a11y": "^10.2.15",
+    "@storybook/addon-docs": "^10.2.15",
+    "@storybook/addon-onboarding": "^10.2.15",
+    "@storybook/react-vite": "^10.2.15",
     "@tailwindcss/vite": "^4.1.12",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
@@ -28,10 +36,12 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
+    "playwright": "^1.58.2",
+    "storybook": "^10.2.15",
     "tailwindcss": "^4.1.12",
+    "tsx": "^4.21.0",
     "typescript": "~5.6.2",
     "vite": "^6.3.5",
-    "tsx": "^4.21.0",
     "vitest": "^2.1.6"
   }
 }
