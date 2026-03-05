@@ -271,7 +271,7 @@ export function BirdListPlaceholder() {
               {distance === 'all' ? 'All distances' : `Under ${distance} mi`}
             </button>
           ))}
-          {(['all', 'songbird', 'woodpecker', 'raptor'] as const).map((group) => (
+          {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group) => (
             <button
               key={group}
               type="button"
