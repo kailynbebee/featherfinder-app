@@ -1,9 +1,16 @@
 import type { LocationValue } from '@/context/LocationContext'
 
+export type RarityTier = 'common' | 'uncommon' | 'rare'
+
 export type BirdTag =
   | { type: 'country_bird'; country: string }
   | { type: 'subnational_bird'; regionCode: string; regionName: string }
-  | { type: 'rare_sighting' }
+  | {
+      type: 'season'
+      season: 'breeding' | 'nonbreeding' | 'migration'
+      isNow: boolean
+      dateRange: string
+    }
 
 export type NearbyBird = {
   id: string
@@ -82,15 +89,32 @@ function mapObservationToNearbyBird(
   }
 }
 
-function deduplicateBySpecies(observations: EBirdObservation[]): EBirdObservation[] {
-  const bySpecies = new Map<string, EBirdObservation>()
+/**
+ * eBird geo/recent returns one observation per species (most recent only).
+ * We pick the closest observation when multiple exist (e.g. from different API versions).
+ */
+function pickClosestPerSpecies(
+  observations: EBirdObservation[],
+  userLat: number,
+  userLng: number
+): EBirdObservation[] {
+  const bySpecies = new Map<string, EBirdObservation[]>()
   for (const obs of observations) {
-    const existing = bySpecies.get(obs.speciesCode)
-    if (!existing) {
-      bySpecies.set(obs.speciesCode, obs)
-    }
+    const list = bySpecies.get(obs.speciesCode) ?? []
+    list.push(obs)
+    bySpecies.set(obs.speciesCode, list)
   }
-  return Array.from(bySpecies.values())
+  return Array.from(bySpecies.values()).map((list) => {
+    const [first, ...rest] = list
+    return rest.reduce(
+      (best, curr) => {
+        const bestDist = haversineMiles(userLat, userLng, best.lat, best.lng)
+        const currDist = haversineMiles(userLat, userLng, curr.lat, curr.lng)
+        return currDist < bestDist ? curr : best
+      },
+      first!
+    )
+  })
 }
 
 export async function getNearbyBirds(location: LocationValue): Promise<NearbyBird[]> {
@@ -127,8 +151,8 @@ export async function getNearbyBirds(location: LocationValue): Promise<NearbyBir
     }))
     .filter((o) => !Number.isNaN(o.lat) && !Number.isNaN(o.lng))
 
-  const deduped = deduplicateBySpecies(valid)
-  const birds = deduped.map((obs) =>
+  const closestPerSpecies = pickClosestPerSpecies(valid, location.lat, location.lng)
+  const birds = closestPerSpecies.map((obs) =>
     mapObservationToNearbyBird(obs, location.lat, location.lng)
   )
   birds.sort((a, b) => a.distanceMiles - b.distanceMiles)

@@ -59,7 +59,7 @@ describe('getNearbyBirds', () => {
     expect(typeof birds[0]?.lastSeenHoursAgo).toBe('number')
   })
 
-  it('deduplicates by species and keeps first occurrence', async () => {
+  it('picks closest observation when same species appears multiple times', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => [

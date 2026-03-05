@@ -32,3 +32,10 @@ When creating or updating GitHub issues, use this structure. Refine it over time
   - `Closes #20` (in PR merge commit or final commit)
 
 This links commits to issues in GitHub and keeps work traceable.
+
+## Global use
+
+FeatherFinder is meant for **global use**. When building features that depend on seasons, climate, or geography:
+
+- **Use lat-based hemisphere detection**: Northern (lat ≥ 0) vs Southern (lat < 0). Avoid Northern-only assumptions.
+- **Seasonal logic**: Breeding, migration, and nonbreeding months differ by hemisphere. Use `location.lat` (or relevant lat) to pick the correct ranges.

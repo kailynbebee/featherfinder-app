@@ -1,10 +1,11 @@
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
-import { getNearbyBirds, type BirdTag, type NearbyBird } from '@/services/nearbyBirds'
+import { getNearbyBirds, type BirdTag, type NearbyBird, type RarityTier } from '@/services/nearbyBirds'
 import { useBirdImage } from '@/hooks/useBirdImage'
 import { useBirdTags } from '@/hooks/useBirdTags'
 import { BirdTag as BirdTagChip } from '@/components/ui/BirdTag'
+import { RarityBadge } from '@/components/ui/RarityBadge'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
@@ -67,12 +68,14 @@ function useIsDesktop() {
 function BirdCard({
   bird,
   tags,
+  rarity,
   selected,
   onSelect,
   onQuickView,
 }: {
   bird: NearbyBird
   tags: readonly BirdTag[]
+  rarity: RarityTier
   selected: boolean
   onSelect: () => void
   onQuickView: () => void
@@ -124,13 +127,12 @@ function BirdCard({
         <p className="mt-1 font-kodchasan text-xs text-[#4e3626]/65">
           {bird.group} · seen {bird.lastSeenHoursAgo}h ago
         </p>
-        {tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {tags.slice(0, 2).map((tag, i) => (
-              <BirdTagChip key={i} tag={tag} />
-            ))}
-          </div>
-        )}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <RarityBadge tier={rarity} />
+          {tags.map((tag, i) => (
+            <BirdTagChip key={i} tag={tag} />
+          ))}
+        </div>
       </div>
     </button>
   )
@@ -139,10 +141,12 @@ function BirdCard({
 function QuickViewOverlay({
   bird,
   tags,
+  rarity,
   onClose,
 }: {
   bird: NearbyBird
   tags: readonly BirdTag[]
+  rarity: RarityTier
   onClose: () => void
 }) {
   const { imageUrl, caption, isLoading } = useBirdImage(bird.id, bird.scientificName)
@@ -213,13 +217,12 @@ function QuickViewOverlay({
         <p className="mt-4 font-kodchasan text-sm text-[#4e3626]/70">
           ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
         </p>
-        {tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {tags.map((tag, i) => (
-              <BirdTagChip key={i} tag={tag} />
-            ))}
-          </div>
-        )}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <RarityBadge tier={rarity} />
+          {tags.map((tag, i) => (
+            <BirdTagChip key={i} tag={tag} />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -288,7 +291,7 @@ export function BirdListPlaceholder() {
   }, [location])
 
   const locationLabel = location ? `Location: ${location.label}` : ''
-  const tagsByBirdId = useBirdTags(location, birds)
+  const { tagsByBirdId, rarityByBirdId } = useBirdTags(location, birds)
 
   const visibleBirds = useMemo(() => {
     let filtered = [...birds]
@@ -399,6 +402,7 @@ export function BirdListPlaceholder() {
             <BirdCard
               bird={bird}
               tags={tagsByBirdId.get(bird.id) ?? []}
+              rarity={rarityByBirdId.get(bird.id) ?? 'uncommon'}
               selected={selectedBirdId === bird.id}
               onSelect={() => setSelectedBirdId(bird.id)}
               onQuickView={() => openQuickView(bird)}
@@ -601,6 +605,7 @@ export function BirdListPlaceholder() {
         <QuickViewOverlay
           bird={quickViewBird}
           tags={tagsByBirdId.get(quickViewBird.id) ?? []}
+          rarity={rarityByBirdId.get(quickViewBird.id) ?? 'uncommon'}
           onClose={closeQuickView}
         />
       )}

@@ -5,6 +5,8 @@ import { defineConfig, loadEnv } from 'vite'
 import { geocodeOne, getSuggestions, parseSuggestRequest } from './server/location/suggest'
 import { reverseNominatimContext } from './server/location/nominatimClient'
 import { toEbirdRegionCode } from './server/location/regionCode'
+import { fetchRarityFromStatusTrends } from './server/birds/statusTrendsRarity'
+import { TYPICALLY_COMMON_SPECIES } from './server/birds/typicallyCommonSpecies'
 
 function sendJson(res: { statusCode: number; setHeader: (name: string, value: string) => void; end: (body: string) => void }, statusCode: number, payload: unknown) {
   res.statusCode = statusCode
@@ -167,6 +169,81 @@ function locationApiPlugin() {
           const msg = err instanceof Error ? err.message : 'Failed to fetch notable birds from eBird'
           sendJson(res, 502, { error: msg })
         }
+      })
+
+      server.middlewares.use('/api/birds/st/rarity', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const accessKey = process.env.EBIRD_ST_ACCESS_KEY?.trim()
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const speciesParam = url.searchParams.get('species')?.trim()
+        const regionCode = url.searchParams.get('regionCode') || null
+        const countryCode = url.searchParams.get('countryCode') || null
+        const latParam = url.searchParams.get('lat')
+        if (!speciesParam || !latParam) {
+          sendJson(res, 400, { error: 'species and lat are required' })
+          return
+        }
+        const lat = parseFloat(latParam)
+        if (Number.isNaN(lat)) {
+          sendJson(res, 400, { error: 'lat must be a valid number' })
+          return
+        }
+        const speciesCodes = speciesParam.split(',').map((s) => s.trim()).filter(Boolean)
+        const result: Record<string, { rarity: string; abundanceMean?: number }> = {}
+
+        if (!accessKey) {
+          for (const code of speciesCodes) {
+            result[code] = {
+              rarity: TYPICALLY_COMMON_SPECIES.has(code) ? 'common' : 'uncommon',
+            }
+          }
+          sendJson(res, 200, result)
+          return
+        }
+
+        const stResults: Array<{ code: string; abundanceMean: number; rangePercentOccupied?: number }> = []
+        for (const code of speciesCodes) {
+          try {
+            const st = await fetchRarityFromStatusTrends(
+              code,
+              regionCode,
+              countryCode,
+              lat,
+              accessKey
+            )
+            if (st) {
+              stResults.push({
+                code,
+                abundanceMean: st.abundanceMean,
+                rangePercentOccupied: st.rangePercentOccupied,
+              })
+            } else {
+              result[code] = {
+                rarity: TYPICALLY_COMMON_SPECIES.has(code) ? 'common' : 'uncommon',
+              }
+            }
+          } catch {
+            result[code] = { rarity: 'uncommon' }
+          }
+        }
+
+        if (stResults.length > 0) {
+          const score = (r: { abundanceMean: number; rangePercentOccupied?: number }) =>
+            r.rangePercentOccupied ?? r.abundanceMean
+          stResults.sort((a, b) => score(b) - score(a))
+          const n = stResults.length
+          const commonCut = Math.ceil(n * 0.4)
+          const uncommonCut = Math.ceil(n * 0.75)
+          for (let i = 0; i < n; i++) {
+            const r = stResults[i]!
+            const tier = i < commonCut ? 'common' : i < uncommonCut ? 'uncommon' : 'rare'
+            result[r.code] = { rarity: tier, abundanceMean: r.abundanceMean }
+          }
+        }
+        sendJson(res, 200, result)
       })
 
       server.middlewares.use('/api/birds/image', async (req, res) => {
