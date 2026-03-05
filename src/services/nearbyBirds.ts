@@ -62,7 +62,8 @@ function mapObservationToNearbyBird(
   userLat: number,
   userLng: number
 ): NearbyBird {
-  const distanceMiles = haversineMiles(userLat, userLng, obs.lat, obs.lng)
+  const raw = haversineMiles(userLat, userLng, obs.lat, obs.lng)
+  const distanceMiles = Math.max(0, raw)
   const lastSeenHoursAgo = Math.round(hoursSinceObsDt(obs.obsDt))
   return {
     id: obs.speciesCode,
