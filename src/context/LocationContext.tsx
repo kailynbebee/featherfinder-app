@@ -1,14 +1,18 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
-export type LocationType = 'zip' | 'geo'
+export type LocationSource = 'query' | 'geo'
 
-export type LocationValue =
-  | { type: 'zip'; value: string }
-  | { type: 'geo'; value: { lat: number; lng: number } }
+export type LocationValue = {
+  source: LocationSource
+  lat: number
+  lng: number
+  label: string
+  query?: string
+}
 
 type LocationContextValue = {
   location: LocationValue | null
-  setZipLocation: (zip: string) => void
+  setQueryLocation: (query: string, lat: number, lng: number, label: string) => void
   setGeoLocation: (lat: number, lng: number) => void
   clearLocation: () => void
 }
@@ -18,12 +22,17 @@ const LocationContext = createContext<LocationContextValue | null>(null)
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<LocationValue | null>(null)
 
-  const setZipLocation = useCallback((zip: string) => {
-    setLocation({ type: 'zip', value: zip })
+  const setQueryLocation = useCallback((query: string, lat: number, lng: number, label: string) => {
+    setLocation({ source: 'query', query, lat, lng, label })
   }, [])
 
   const setGeoLocation = useCallback((lat: number, lng: number) => {
-    setLocation({ type: 'geo', value: { lat, lng } })
+    setLocation({
+      source: 'geo',
+      lat,
+      lng,
+      label: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    })
   }, [])
 
   const clearLocation = useCallback(() => {
@@ -32,7 +41,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   return (
     <LocationContext.Provider
-      value={{ location, setZipLocation, setGeoLocation, clearLocation }}
+      value={{ location, setQueryLocation, setGeoLocation, clearLocation }}
     >
       {children}
     </LocationContext.Provider>

@@ -46,7 +46,7 @@ function markerIcon(isSelected: boolean): DivIcon {
 
 export function BirdMap({ birds, selectedBirdId, onSelectBird, className }: BirdMapProps) {
   const center = useMemo(() => {
-    if (birds.length === 0) return { lat: 45.52, lng: -122.68 }
+    if (birds.length === 0) return { lat: 20, lng: 0 }
     const lat = birds.reduce((sum, bird) => sum + bird.lat, 0) / birds.length
     const lng = birds.reduce((sum, bird) => sum + bird.lng, 0) / birds.length
     return { lat, lng }

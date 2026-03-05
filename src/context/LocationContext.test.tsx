@@ -4,11 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { LocationProvider, useLocation } from './LocationContext'
 
 function TestConsumer() {
-  const { location, setZipLocation, setGeoLocation, clearLocation } = useLocation()
+  const { location, setQueryLocation, setGeoLocation, clearLocation } = useLocation()
   return (
     <div data-testid="test-consumer">
       <span data-testid="location">{location ? JSON.stringify(location) : 'null'}</span>
-      <button onClick={() => setZipLocation('12345')}>Set zip</button>
+      <button onClick={() => setQueryLocation('Paris', 48.8566, 2.3522, 'Paris, Ile-de-France, France')}>Set query</button>
       <button onClick={() => setGeoLocation(45.5, -122.6)}>Set geo</button>
       <button onClick={clearLocation}>Clear</button>
     </div>
@@ -26,7 +26,7 @@ describe('LocationContext', () => {
     expect(within(consumer).getByTestId('location')).toHaveTextContent('null')
   })
 
-  it('stores zip location when setZipLocation is called', async () => {
+  it('stores query location when setQueryLocation is called', async () => {
     const user = userEvent.setup()
     render(
       <LocationProvider>
@@ -34,8 +34,10 @@ describe('LocationContext', () => {
       </LocationProvider>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
-    await user.click(within(consumer).getByText('Set zip'))
-    expect(within(consumer).getByTestId('location')).toHaveTextContent('{"type":"zip","value":"12345"}')
+    await user.click(within(consumer).getByText('Set query'))
+    expect(within(consumer).getByTestId('location')).toHaveTextContent(
+      '{"source":"query","query":"Paris","lat":48.8566,"lng":2.3522,"label":"Paris, Ile-de-France, France"}'
+    )
   })
 
   it('stores geo location when setGeoLocation is called', async () => {
@@ -47,7 +49,9 @@ describe('LocationContext', () => {
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
     await user.click(within(consumer).getByText('Set geo'))
-    expect(within(consumer).getByTestId('location')).toHaveTextContent('{"type":"geo","value":{"lat":45.5,"lng":-122.6}}')
+    expect(within(consumer).getByTestId('location')).toHaveTextContent(
+      '{"source":"geo","lat":45.5,"lng":-122.6,"label":"45.5000, -122.6000"}'
+    )
   })
 
   it('clears location when clearLocation is called', async () => {
@@ -58,7 +62,7 @@ describe('LocationContext', () => {
       </LocationProvider>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
-    await user.click(within(consumer).getByText('Set zip'))
+    await user.click(within(consumer).getByText('Set query'))
     expect(within(consumer).getByTestId('location')).not.toHaveTextContent('null')
     await user.click(within(consumer).getByText('Clear'))
     expect(within(consumer).getByTestId('location')).toHaveTextContent('null')

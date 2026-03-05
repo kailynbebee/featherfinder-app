@@ -27,41 +27,17 @@ function sleep(ms: number) {
 }
 
 function getSeedFromLocation(location: LocationValue): number {
-  if (location.type === 'zip') {
-    return Number(location.value)
-  }
-
-  const { lat, lng } = location.value
-  return Math.round(Math.abs(lat * 1000) + Math.abs(lng * 1000))
-}
-
-function getCenterFromLocation(location: LocationValue): { lat: number; lng: number } {
-  if (location.type === 'geo') {
-    return location.value
-  }
-
-  const zipSeed = Number(location.value)
-  const lat = 45.40 + ((zipSeed % 90) / 1000)
-  const lng = -122.85 + ((zipSeed % 120) / 1000)
-  return { lat, lng }
+  return Math.round(Math.abs(location.lat * 1000) + Math.abs(location.lng * 1000))
 }
 
 export async function getNearbyBirds(location: LocationValue): Promise<NearbyBird[]> {
   await sleep(MOCK_LATENCY_MS)
 
-  if (location.type === 'zip') {
-    if (location.value === '00000') return []
-    if (location.value === '99999') {
-      throw new Error('Nearby bird service is temporarily unavailable.')
-    }
-  }
-
   const seed = getSeedFromLocation(location)
-  const center = getCenterFromLocation(location)
   return MOCK_BIRDS.map((bird, index) => {
     const distanceMiles = Number((((seed % 11) + 0.5) + index * 1.3).toFixed(1))
-    const lat = Number((center.lat + (index - 2) * 0.012).toFixed(6))
-    const lng = Number((center.lng + ((index % 2 === 0 ? 1 : -1) * (index + 1)) * 0.01).toFixed(6))
+    const lat = Number((location.lat + (index - 2) * 0.012).toFixed(6))
+    const lng = Number((location.lng + ((index % 2 === 0 ? 1 : -1) * (index + 1)) * 0.01).toFixed(6))
     return { ...bird, distanceMiles, lat, lng }
   })
 }
