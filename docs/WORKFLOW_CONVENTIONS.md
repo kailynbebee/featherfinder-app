@@ -2,6 +2,8 @@
 
 Project preferences for planning and executing work. Reference this document when creating plans or making commits.
 
+**Retrospective mindset** — After completing work or planning, reflect: What did we overlook? What would we do differently next time? What patterns or checks should we codify so we don't repeat the same oversight? Capture those insights and update this doc or our plans when they emerge.
+
 ## GitHub Issues
 
 - **Link all issues to the FeatherFinder App Roadmap project** when creating or updating issues.
@@ -11,6 +13,8 @@ Project preferences for planning and executing work. Reference this document whe
 - **Add to existing issues** when the work fits an open issue; avoid creating duplicates.
 - **Close duplicates** when you find them — reference the canonical issue and close the duplicate.
 - **Close obsolete issues** when something is no longer relevant. Add a logical closing note (e.g., "No longer needed", "Superseded by #X", "Fixed elsewhere").
+- **Close issues when work is done** — Use `(Closes #N)` in the final commit of a feature so GitHub auto-closes the issue when pushed. If you forgot, close manually and add a brief note linking to the implementing commit(s).
+- **Periodically reconcile open issues with the codebase** — Before releases or when catching up, review open issues and close any that are already implemented. Avoids orphaned issues and keeps the backlog accurate.
 - **Create new issues** only when no suitable existing issue exists. Break large features into discrete, trackable issues.
 - **Link related issues** when they are distinct but related (e.g., "Relates to #X", "Blocks #Y"). This keeps the workflow informed and makes dependencies visible.
 - Use issues to document scope, acceptance criteria, and context.
@@ -27,13 +31,23 @@ When creating or updating GitHub issues, use this structure. Refine it over time
 ## Commit Messages
 
 - **Include the relevant GitHub issue number** in every commit message.
-- Format: `Brief description (#123)` or `Brief description (Closes #123)` for the final commit of a feature.
+- Format: `Brief description (#123)` for work-in-progress commits; `Brief description (Closes #123)` for the **final commit** of a feature. Using `Closes` auto-closes the issue when pushed to the default branch.
 - Examples:
-  - `Add BirdTag component (#20)`
+  - `Add BirdTag component (#20)` — links to issue
+  - `Add BirdTag component (Closes #20)` — links and auto-closes when merged
   - `Fix geolocation error handling (#15)`
-  - `Closes #20` (in PR merge commit or final commit)
+- **Prefer `(Closes #N)` on the last commit** of a feature so the issue closes automatically and the paper trail is explicit. If you forget, amend the commit message before pushing, or close the issue manually.
 
-This links commits to issues in GitHub and keeps work traceable.
+## Testing and Quality
+
+- **Storybook** — Add stories for new components. When changing UI that existing stories depict (e.g. layout, header content), update those stories too. Use `npm run storybook` to verify.
+- **pa11y** — When adding routes or changing page structure, add or update URLs in `.pa11yci.json` and `.pa11yci.dev.json`. Run `npm run test:a11y` before committing UI changes that affect accessibility.
+- **Vitest** — Update or add unit/integration tests when behavior changes.
+
+## Cursor Plans
+
+- **Archive completed plans** — When a plan's work is done (implemented, superseded, or obsolete), move it to `~/.cursor/plans/archive/`. Keeps the active plans folder focused on work in progress.
+- **Ignore plans for other projects** — Leave plans for different projects (e.g. Super Beats) in place; do not archive them.
 
 ## Global use
 

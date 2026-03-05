@@ -19,18 +19,18 @@ const TOKENS = [
   { token: 'app-background', hex: '#F5F0E8', name: 'Warm Cream', role: 'Page background' },
   { token: 'app-surface', hex: '#FAF6EF', name: 'Parchment', role: 'Card / surface' },
   { token: 'app-surface-light', hex: '#FFFDF8', name: 'Ivory White', role: 'Input / light surface' },
-  { token: 'app-text', hex: '#4A3728', name: 'Deep Brown', role: 'Body text' },
-  { token: 'app-text-muted', hex: '#7A6B5A', name: '—', role: 'Muted / secondary text' },
-  { token: 'app-accent', hex: '#D94420', name: 'Flycatcher Red', role: 'Primary CTA' },
-  { token: 'app-accent-hover', hex: '#BF5B2E', name: 'Burnt Orange', role: 'CTA hover' },
+  { token: 'app-text', hex: '#3D3A2E', name: 'Deep Brown', role: 'Body text' },
+  { token: 'app-text-muted', hex: '#6D674C', name: 'Olive Brown', role: 'Muted / secondary text' },
+  { token: 'app-accent', hex: '#B54837', name: 'Khroma Coral', role: 'Primary CTA' },
+  { token: 'app-accent-hover', hex: '#913D10', name: 'Burnt Sienna', role: 'CTA hover' },
   { token: 'app-accent-secondary', hex: '#2A8C82', name: 'Jungle Teal', role: 'Secondary CTA / links' },
   { token: 'app-accent-secondary-hover', hex: '#1B6B63', name: 'Deep Teal', role: 'Headers / nav' },
   { token: 'app-border', hex: '#d4c9b8', name: 'Warm Tan', role: 'Borders / dividers' },
-  { token: 'app-border-muted', hex: '#C4B396', name: 'Warm Tan', role: 'Subtle borders' },
+  { token: 'app-border-muted', hex: '#BB9888', name: 'Khroma Taupe', role: 'Subtle borders' },
   { token: 'app-dot-accent', hex: '#1A1A1A', name: 'Dot Black', role: 'Polka dot texture' },
 ]
 
-const HEAT_GRADIENT = ['#C4B396', '#BF5B2E', '#D94420']
+const HEAT_GRADIENT = ['#BB9888', '#913D10', '#B54837']
 
 export const ColorSwatches: StoryObj = {
   render: () => (
