@@ -1,5 +1,10 @@
 import type { LocationValue } from '@/context/LocationContext'
 
+export type BirdTag =
+  | { type: 'country_bird'; country: string }
+  | { type: 'subnational_bird'; regionCode: string; regionName: string }
+  | { type: 'rare_sighting' }
+
 export type NearbyBird = {
   id: string
   commonName: string

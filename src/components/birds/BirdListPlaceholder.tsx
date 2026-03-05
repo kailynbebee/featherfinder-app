@@ -1,8 +1,10 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
-import { getNearbyBirds, type NearbyBird } from '@/services/nearbyBirds'
+import { getNearbyBirds, type BirdTag, type NearbyBird } from '@/services/nearbyBirds'
 import { useBirdImage } from '@/hooks/useBirdImage'
+import { useBirdTags } from '@/hooks/useBirdTags'
+import { BirdTag as BirdTagChip } from '@/components/ui/BirdTag'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 
@@ -64,11 +66,13 @@ function useIsDesktop() {
 
 function BirdCard({
   bird,
+  tags,
   selected,
   onSelect,
   onQuickView,
 }: {
   bird: NearbyBird
+  tags: readonly BirdTag[]
   selected: boolean
   onSelect: () => void
   onQuickView: () => void
@@ -120,6 +124,13 @@ function BirdCard({
         <p className="mt-1 font-kodchasan text-xs text-[#4e3626]/65">
           {bird.group} · seen {bird.lastSeenHoursAgo}h ago
         </p>
+        {tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {tags.slice(0, 2).map((tag, i) => (
+              <BirdTagChip key={i} tag={tag} />
+            ))}
+          </div>
+        )}
       </div>
     </button>
   )
@@ -127,9 +138,11 @@ function BirdCard({
 
 function QuickViewOverlay({
   bird,
+  tags,
   onClose,
 }: {
   bird: NearbyBird
+  tags: readonly BirdTag[]
   onClose: () => void
 }) {
   const { imageUrl, caption, isLoading } = useBirdImage(bird.id, bird.scientificName)
@@ -200,6 +213,13 @@ function QuickViewOverlay({
         <p className="mt-4 font-kodchasan text-sm text-[#4e3626]/70">
           ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
         </p>
+        {tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {tags.map((tag, i) => (
+              <BirdTagChip key={i} tag={tag} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -268,6 +288,7 @@ export function BirdListPlaceholder() {
   }, [location])
 
   const locationLabel = location ? `Location: ${location.label}` : ''
+  const tagsByBirdId = useBirdTags(location, birds)
 
   const visibleBirds = useMemo(() => {
     let filtered = [...birds]
@@ -368,6 +389,7 @@ export function BirdListPlaceholder() {
           <li key={bird.id}>
             <BirdCard
               bird={bird}
+              tags={tagsByBirdId.get(bird.id) ?? []}
               selected={selectedBirdId === bird.id}
               onSelect={() => setSelectedBirdId(bird.id)}
               onQuickView={() => openQuickView(bird)}
@@ -567,7 +589,11 @@ export function BirdListPlaceholder() {
           )}
       </main>
       {quickViewBird && (
-        <QuickViewOverlay bird={quickViewBird} onClose={closeQuickView} />
+        <QuickViewOverlay
+          bird={quickViewBird}
+          tags={tagsByBirdId.get(quickViewBird.id) ?? []}
+          onClose={closeQuickView}
+        />
       )}
     </div>
   )

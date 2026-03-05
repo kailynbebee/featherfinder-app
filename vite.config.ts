@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 import { geocodeOne, getSuggestions, parseSuggestRequest } from './server/location/suggest'
+import { reverseNominatimContext } from './server/location/nominatimClient'
+import { toEbirdRegionCode } from './server/location/regionCode'
 
 function sendJson(res: { statusCode: number; setHeader: (name: string, value: string) => void; end: (body: string) => void }, statusCode: number, payload: unknown) {
   res.statusCode = statusCode
@@ -51,6 +53,42 @@ function locationApiPlugin() {
         sendJson(res, 200, { location: result })
       })
 
+      server.middlewares.use('/api/location/reverse', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const lat = url.searchParams.get('lat')
+        const lng = url.searchParams.get('lng')
+        if (!lat || !lng) {
+          sendJson(res, 400, { error: 'lat and lng are required' })
+          return
+        }
+        const latNum = parseFloat(lat)
+        const lngNum = parseFloat(lng)
+        if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+          sendJson(res, 400, { error: 'lat and lng must be valid numbers' })
+          return
+        }
+        try {
+          const ctx = await reverseNominatimContext({ lat: latNum, lng: lngNum })
+          if (!ctx) {
+            sendJson(res, 200, { state: null, countryCode: null, regionCode: null })
+            return
+          }
+          const regionCode = toEbirdRegionCode(ctx.countryCode, ctx.state)
+          sendJson(res, 200, {
+            state: ctx.state,
+            countryCode: ctx.countryCode,
+            regionCode,
+          })
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Reverse geocode failed'
+          sendJson(res, 502, { error: msg })
+        }
+      })
+
       server.middlewares.use('/api/birds/nearby', async (req, res) => {
         if (req.method !== 'GET') {
           sendJson(res, 405, { error: 'Method not allowed' })
@@ -90,6 +128,43 @@ function locationApiPlugin() {
           sendJson(res, 200, data)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to fetch from eBird'
+          sendJson(res, 502, { error: msg })
+        }
+      })
+
+      server.middlewares.use('/api/birds/notable', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const apiKey = process.env.EBIRD_API_KEY
+        if (!apiKey?.trim()) {
+          sendJson(res, 503, { error: 'eBird API key not configured. Set EBIRD_API_KEY in .env' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const region = url.searchParams.get('region')?.trim()
+        if (!region || region.length < 2) {
+          sendJson(res, 400, { error: 'region is required (e.g. US-CA, CA-ON)' })
+          return
+        }
+        const back = url.searchParams.get('back') ?? '14'
+        try {
+          const ebirdUrl = new URL(`${EBIRD_BASE}/data/obs/${encodeURIComponent(region)}/recent/notable`)
+          ebirdUrl.searchParams.set('back', back)
+          ebirdUrl.searchParams.set('maxResults', '100')
+          const ebirdRes = await fetch(ebirdUrl.toString(), {
+            headers: { 'X-eBirdApiToken': apiKey },
+          })
+          const data = await ebirdRes.json()
+          if (!ebirdRes.ok) {
+            const msg = typeof data?.message === 'string' ? data.message : 'eBird API error'
+            sendJson(res, ebirdRes.status === 401 ? 502 : 502, { error: msg })
+            return
+          }
+          sendJson(res, 200, data)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to fetch notable birds from eBird'
           sendJson(res, 502, { error: msg })
         }
       })

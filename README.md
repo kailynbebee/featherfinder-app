@@ -4,6 +4,8 @@ A birding companion app that bridges the board game Wingspan and your local envi
 
 Built with React, Vite, Tailwind CSS, Leaflet + OpenStreetMap, and (planned) Supabase and eBird API.
 
+**Language:** English only for now; internationalization (i18n) and additional languages are planned for the future.
+
 **eBird integration:** Nearby birds are fetched from the [eBird API](https://ebird.org/api). Copy `.env.example` to `.env` and add your API key from [ebird.org/api/keygen](https://ebird.org/api/keygen). Without it, the birds page will show an error.
 
 ## Getting Started
