@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, Marker, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { Circle, MapContainer, Marker, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import type { DivIcon } from 'leaflet'
 import L from 'leaflet'
 import { getNearbyBirdingPlaces, type BirdingPlace } from '@/services/birdingPlaces'
@@ -11,6 +11,8 @@ type BirdMapProps = {
   selectedBirdId: string | null
   onSelectBird: (birdId: string) => void
   pauseSelectionFlyTo?: boolean
+  searchRadiusMiles?: number
+  searchCenter?: { lat: number; lng: number }
   landmarkDistanceMiles?: number
   locationCenter?: { lat: number; lng: number }
   fitBoundsBottomPaddingPx?: number
@@ -150,6 +152,8 @@ export function BirdMap({
   selectedBirdId,
   onSelectBird,
   pauseSelectionFlyTo = false,
+  searchRadiusMiles,
+  searchCenter,
   landmarkDistanceMiles = 25,
   locationCenter,
   fitBoundsBottomPaddingPx = 24,
@@ -231,6 +235,18 @@ export function BirdMap({
         bottomPaddingPx={fitBoundsBottomPaddingPx}
       />
       <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} isPaused={pauseSelectionFlyTo} />
+      {searchCenter && typeof searchRadiusMiles === 'number' ? (
+        <Circle
+          center={[searchCenter.lat, searchCenter.lng]}
+          radius={searchRadiusMiles * 1609.34}
+          pathOptions={{
+            color: palette.accentSecondaryHover,
+            weight: 1.5,
+            fillColor: palette.accentSecondaryHover,
+            fillOpacity: 0.08,
+          }}
+        />
+      ) : null}
       {places.map((place) => (
         <Marker
           key={place.id}

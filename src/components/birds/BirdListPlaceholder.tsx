@@ -557,6 +557,8 @@ export function BirdListPlaceholder() {
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
                   pauseSelectionFlyTo={quickViewBird !== null}
+                  searchRadiusMiles={distanceFilter === '10' ? 10 : 25}
+                  searchCenter={{ lat: location.lat, lng: location.lng }}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
                   locationCenter={{ lat: location.lat, lng: location.lng }}
                   fitBoundsBottomPaddingPx={24}
@@ -583,6 +585,8 @@ export function BirdListPlaceholder() {
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
                   pauseSelectionFlyTo={quickViewBird !== null}
+                  searchRadiusMiles={distanceFilter === '10' ? 10 : 25}
+                  searchCenter={{ lat: location.lat, lng: location.lng }}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
                   locationCenter={{ lat: location.lat, lng: location.lng }}
                   fitBoundsBottomPaddingPx={
