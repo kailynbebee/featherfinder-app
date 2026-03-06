@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { AppHeader } from './AppHeader'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { LocationSearchBar } from '@/components/location/LocationSearchBar'
+import { LocationProvider } from '@/context/LocationContext'
 
 const meta: Meta<typeof AppHeader> = {
   title: 'Components/Layout/AppHeader',
@@ -30,17 +32,29 @@ export const Welcome: StoryObj<typeof AppHeader> = {
 
 export const Birds: StoryObj<typeof AppHeader> = {
   render: () => (
-    <AppHeader className="px-4 pb-4 pt-4 md:px-6">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <FeatherFinderMark showName={false} />
-          <button type="button" className="font-kodchasan text-xs text-app-accent-secondary hover:opacity-80">
-            ← Back
-          </button>
+    <LocationProvider
+      initialLocation={{
+        source: 'query',
+        lat: 45.5152,
+        lng: -122.6784,
+        label: 'Portland, Oregon',
+        query: 'portland',
+      }}
+    >
+      <AppHeader className="px-4 pb-4 pt-4 md:px-6">
+        <h1 className="sr-only">Birds near Portland, Oregon</h1>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <FeatherFinderMark showName={false} />
+            <button type="button" className="font-kodchasan text-xs text-app-accent-secondary hover:opacity-80">
+              ← Back
+            </button>
+          </div>
+          <div className="min-w-0 flex-1">
+            <LocationSearchBar mode="results" compact onCommitLocation={() => {}} />
+          </div>
         </div>
-        <h1 className="font-kodchasan text-xl font-bold text-app-text md:text-2xl">Birds Near You</h1>
-        <span className="font-kodchasan text-xs text-app-text/70">Portland, Oregon</span>
-      </div>
-    </AppHeader>
+      </AppHeader>
+    </LocationProvider>
   ),
 }

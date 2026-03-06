@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
 import { geocodeOne, getSuggestions, parseSuggestRequest } from './server/location/suggest'
-import { reverseNominatimContext } from './server/location/nominatimClient'
+import { reverseNominatimContext, searchNominatim } from './server/location/nominatimClient'
 import { toEbirdRegionCode } from './server/location/regionCode'
 import { fetchRarityFromStatusTrends } from './server/birds/statusTrendsRarity'
 import { TYPICALLY_COMMON_SPECIES } from './server/birds/typicallyCommonSpecies'
@@ -91,6 +91,58 @@ function locationApiPlugin() {
         }
       })
 
+      server.middlewares.use('/api/location/natural-places', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const lat = url.searchParams.get('lat')
+        const lng = url.searchParams.get('lng')
+        const rawLimit = Number(url.searchParams.get('limit') ?? '8')
+        const limit = Math.min(20, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 8))
+        if (!lat || !lng) {
+          sendJson(res, 400, { error: 'lat and lng are required' })
+          return
+        }
+        const latNum = parseFloat(lat)
+        const lngNum = parseFloat(lng)
+        if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
+          sendJson(res, 400, { error: 'lat and lng must be valid numbers' })
+          return
+        }
+
+        // Keep requests light (Nominatim policy), but target common birding place terms.
+        const queries = ['wetland', 'lake', 'nature reserve', 'wildlife refuge', 'state park']
+        const results: Array<{ name: string; lat: number; lng: number }> = []
+        const seen = new Set<string>()
+
+        try {
+          for (const query of queries) {
+            if (results.length >= limit) break
+            const places = await searchNominatim({
+              query,
+              limit: Math.min(6, limit * 2),
+              bias: { lat: latNum, lng: lngNum },
+              bounded: true,
+            })
+            for (const place of places) {
+              if (results.length >= limit) break
+              const name = place.label.split(',')[0]?.trim() ?? ''
+              if (!name) continue
+              const key = `${name.toLowerCase()}::${place.lat.toFixed(3)}::${place.lng.toFixed(3)}`
+              if (seen.has(key)) continue
+              seen.add(key)
+              results.push({ name, lat: place.lat, lng: place.lng })
+            }
+          }
+          sendJson(res, 200, results)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to fetch natural places'
+          sendJson(res, 502, { error: msg })
+        }
+      })
+
       server.middlewares.use('/api/birds/nearby', async (req, res) => {
         if (req.method !== 'GET') {
           sendJson(res, 405, { error: 'Method not allowed' })
@@ -130,6 +182,46 @@ function locationApiPlugin() {
           sendJson(res, 200, data)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to fetch from eBird'
+          sendJson(res, 502, { error: msg })
+        }
+      })
+
+      server.middlewares.use('/api/birds/hotspots', async (req, res) => {
+        if (req.method !== 'GET') {
+          sendJson(res, 405, { error: 'Method not allowed' })
+          return
+        }
+        const apiKey = process.env.EBIRD_API_KEY
+        if (!apiKey?.trim()) {
+          sendJson(res, 503, { error: 'eBird API key not configured. Set EBIRD_API_KEY in .env' })
+          return
+        }
+        const url = new URL(req.url ?? '/', 'http://localhost')
+        const lat = url.searchParams.get('lat')
+        const lng = url.searchParams.get('lng')
+        const dist = url.searchParams.get('dist') ?? '25'
+        if (!lat || !lng) {
+          sendJson(res, 400, { error: 'lat and lng are required' })
+          return
+        }
+        const ebirdUrl = new URL(`${EBIRD_BASE}/ref/hotspot/geo`)
+        ebirdUrl.searchParams.set('lat', lat)
+        ebirdUrl.searchParams.set('lng', lng)
+        ebirdUrl.searchParams.set('dist', dist)
+        ebirdUrl.searchParams.set('fmt', 'json')
+        try {
+          const ebirdRes = await fetch(ebirdUrl.toString(), {
+            headers: { 'X-eBirdApiToken': apiKey },
+          })
+          const data = await ebirdRes.json()
+          if (!ebirdRes.ok) {
+            const msg = typeof data?.message === 'string' ? data.message : 'eBird API error'
+            sendJson(res, 502, { error: msg })
+            return
+          }
+          sendJson(res, 200, data)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to fetch eBird hotspots'
           sendJson(res, 502, { error: msg })
         }
       })

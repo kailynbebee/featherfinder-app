@@ -39,7 +39,7 @@ function TestApp() {
   )
 }
 
-describe('WelcomeScreen', () => {
+describe('HomeScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGeocodeLocation.mockResolvedValue({
@@ -72,12 +72,12 @@ describe('WelcomeScreen', () => {
       fireEvent.click(screen.getAllByRole('button', { name: /search/i })[0])
       await waitFor(
         () => {
-          expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
+          expect(screen.getByRole('heading', { name: /Birds near/ })).toBeInTheDocument()
         },
         { timeout: 3000 }
       )
       expect(mockGeocodeLocation).toHaveBeenCalledWith('new york', 'us')
-      expect(screen.getByText(/Location: New York, New York, United States/)).toBeInTheDocument()
+      expect(screen.getByDisplayValue('New York, New York, United States')).toBeInTheDocument()
     })
 
     it('shows autocomplete suggestions and navigates immediately on suggestion click', async () => {
@@ -100,10 +100,10 @@ describe('WelcomeScreen', () => {
       fireEvent.mouseDown(screen.getByRole('option', { name: 'Paris, Ile-de-France, France' }))
 
       await waitFor(() => {
-        expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
+        expect(screen.getByRole('heading', { name: /Birds near/ })).toBeInTheDocument()
       })
       expect(mockGeocodeLocation).not.toHaveBeenCalled()
-      expect(screen.getByText(/Location: Paris, Ile-de-France, France/)).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Paris, Ile-de-France, France')).toBeInTheDocument()
     })
   })
 
@@ -162,11 +162,11 @@ describe('WelcomeScreen', () => {
       render(<TestApp />)
       await waitFor(
         () => {
-          expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
+          expect(screen.getByDisplayValue('Nearby')).toBeInTheDocument()
         },
         { timeout: 3000 }
       )
-      expect(screen.getAllByText(/Location: 45\.5/)[0]).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /Birds near you/ })).toBeInTheDocument()
     })
   })
 })

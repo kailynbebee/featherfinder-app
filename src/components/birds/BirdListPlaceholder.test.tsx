@@ -70,7 +70,7 @@ describe('BirdListPlaceholder', () => {
     window.dispatchEvent(new Event('resize'))
   })
 
-  it('redirects to welcome screen when /birds is opened without a location', async () => {
+  it('redirects to home screen when /birds is opened without a location', async () => {
     render(<TestApp initialPath="/birds" />)
 
     await waitFor(() => {
@@ -78,12 +78,29 @@ describe('BirdListPlaceholder', () => {
     })
   })
 
+  it('restores location from URL params on direct /birds visit', async () => {
+    mockGetNearbyBirds.mockResolvedValue([demoBirds[0]])
+
+    render(
+      <MemoryRouter initialEntries={['/birds?q=portland&lat=45.5&lng=-122.6']}>
+        <LocationProvider>
+          <App />
+        </LocationProvider>
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
+    })
+    expect(screen.getByDisplayValue('portland')).toBeInTheDocument()
+  })
+
   it('shows loading state while nearby birds are fetched', () => {
     mockGetNearbyBirds.mockImplementation(() => new Promise(() => {}))
 
     render(<TestApp initialPath="/birds" seedQuery="new york" />)
 
-    expect(screen.getAllByText('Birds Near You').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: /Birds near/ })).toBeInTheDocument()
     expect(screen.getAllByText('Finding nearby birds...').length).toBeGreaterThan(0)
   })
 
@@ -120,8 +137,7 @@ describe('BirdListPlaceholder', () => {
     expect(screen.getAllByRole('button', { name: /Try another location/i }).length).toBeGreaterThan(0)
   })
 
-  it('toggles into mobile list mode', async () => {
-    const user = userEvent.setup()
+  it('shows bird list in bottom sheet on mobile', async () => {
     mockGetNearbyBirds.mockResolvedValue(demoBirds)
     window.innerWidth = 390
     window.dispatchEvent(new Event('resize'))
@@ -131,7 +147,6 @@ describe('BirdListPlaceholder', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
     })
-    await user.click(screen.getAllByRole('button', { name: 'List' })[0])
     expect(screen.getAllByRole('button', { name: /Bird card norcar/i }).length).toBeGreaterThan(0)
   })
 

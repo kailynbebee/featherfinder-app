@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { LocationProvider, useLocation } from './LocationContext'
 
 function TestConsumer() {
@@ -18,9 +19,11 @@ function TestConsumer() {
 describe('LocationContext', () => {
   it('provides null location initially', () => {
     render(
-      <LocationProvider>
-        <TestConsumer />
-      </LocationProvider>
+      <MemoryRouter>
+        <LocationProvider>
+          <TestConsumer />
+        </LocationProvider>
+      </MemoryRouter>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
     expect(within(consumer).getByTestId('location')).toHaveTextContent('null')
@@ -29,9 +32,11 @@ describe('LocationContext', () => {
   it('stores query location when setQueryLocation is called', async () => {
     const user = userEvent.setup()
     render(
-      <LocationProvider>
-        <TestConsumer />
-      </LocationProvider>
+      <MemoryRouter>
+        <LocationProvider>
+          <TestConsumer />
+        </LocationProvider>
+      </MemoryRouter>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
     await user.click(within(consumer).getByText('Set query'))
@@ -43,9 +48,11 @@ describe('LocationContext', () => {
   it('stores geo location when setGeoLocation is called', async () => {
     const user = userEvent.setup()
     render(
-      <LocationProvider>
-        <TestConsumer />
-      </LocationProvider>
+      <MemoryRouter>
+        <LocationProvider>
+          <TestConsumer />
+        </LocationProvider>
+      </MemoryRouter>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
     await user.click(within(consumer).getByText('Set geo'))
@@ -57,9 +64,11 @@ describe('LocationContext', () => {
   it('clears location when clearLocation is called', async () => {
     const user = userEvent.setup()
     render(
-      <LocationProvider>
-        <TestConsumer />
-      </LocationProvider>
+      <MemoryRouter>
+        <LocationProvider>
+          <TestConsumer />
+        </LocationProvider>
+      </MemoryRouter>
     )
     const consumer = screen.getAllByTestId('test-consumer')[0]
     await user.click(within(consumer).getByText('Set query'))

@@ -56,6 +56,23 @@ FeatherFinder is meant for **global use**. When building features that depend on
 - **Use lat-based hemisphere detection**: Northern (lat ≥ 0) vs Southern (lat < 0). Avoid Northern-only assumptions.
 - **Seasonal logic**: Breeding, migration, and nonbreeding months differ by hemisphere. Use `location.lat` (or relevant lat) to pick the correct ranges.
 
+## Copy and Editorial
+
+- **Track preferences in** `docs/COPY_GUIDELINES.md`. Add new entries as patterns emerge.
+- **Storybook** — Copy guidelines appear under Foundation/Copy for quick reference during component work.
+
+## Design and UX Inspiration
+
+Apps and resources we reference for location search, map/list layouts, and discovery UX:
+
+- **Airbnb** — Location built into search bar (editable, not static label); search bar as primary context on results
+- **AllTrails** — Location in URL params; recent searches in dropdown; map + list split view
+- **Zillow** — Map search area visualization (deferred — see #5); draw boundary pattern (out of scope)
+- **Nielsen Norman Group** — Search suggestions UX; labeling "Recent searches" clearly
+- **Algolia** — Search bar placement consistency; mobile search best practices
+- **Pencil & Paper** — Search UX patterns; placeholder clarity
+- **Baymard Institute** — Travel/accommodation site UX; split-view results layout; avoid redundant labels
+
 ## Product Principles
 
 - **Bridge Wingspan and the real world** — FeatherFinder connects the board game Wingspan with users' local natural environment to encourage affinity for birds in their own backyard. Features should reinforce this connection and inspire curiosity about nearby wildlife.

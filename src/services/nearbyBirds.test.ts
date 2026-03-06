@@ -51,7 +51,7 @@ describe('getNearbyBirds', () => {
       id: 'norcar',
       commonName: 'Northern Cardinal',
       scientificName: 'Cardinalis cardinalis',
-      group: 'other',
+      group: 'songbird',
       lat: 40.72,
       lng: -74.01,
     })
@@ -119,6 +119,27 @@ describe('getNearbyBirds', () => {
 
     expect(birds[0]?.id).toBe('near')
     expect(birds[1]?.id).toBe('far')
+  })
+
+  it('classifies raptors from common names', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          speciesCode: 'baleag',
+          comName: 'Bald Eagle',
+          sciName: 'Haliaeetus leucocephalus',
+          obsDt: '2025-03-01',
+          locId: 'L1',
+          lat: 40.72,
+          lng: -74.01,
+        },
+      ],
+    } as Response)
+
+    const birds = await getNearbyBirds(location)
+    expect(birds).toHaveLength(1)
+    expect(birds[0]?.group).toBe('raptor')
   })
 
   it('throws with API error message when response is not ok', async () => {

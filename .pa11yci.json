@@ -16,5 +16,9 @@
       ]
     ]
   },
-  "urls": ["http://localhost:4173/", "http://localhost:4173/birds"]
+  "urls": [
+    "http://localhost:4173/",
+    "http://localhost:4173/birds",
+    "http://localhost:4173/birds?q=portland&lat=45.5&lng=-122.6"
+  ]
 }

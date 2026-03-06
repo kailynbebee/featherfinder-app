@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { getNearbyBirds, isInWingspan, type BirdTag, type NearbyBird, type RarityTier } from '@/services/nearbyBirds'
@@ -9,19 +9,31 @@ import { RarityBadge } from '@/components/ui/RarityBadge'
 import { BirdCard } from '@/components/birds/BirdCard'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { LocationSearchBar } from '@/components/location/LocationSearchBar'
 import { AppHeader } from '@/components/layout/AppHeader'
 
 const THUMBNAIL_SIZE = 72
 
-type MobileViewMode = 'map' | 'list'
 type SheetMode = 'collapsed' | 'half' | 'expanded'
-type DistanceFilter = 'all' | '10' | '25'
+type DistanceFilter = '10' | '25'
 type SortMode = 'distance' | 'recent'
 
 const SHEET_HEIGHT_CLASS: Record<SheetMode, string> = {
   collapsed: 'h-26',
-  half: 'h-56',
-  expanded: 'h-[75vh]',
+  half: 'h-[60%]',
+  expanded: 'h-[75%]',
+}
+
+const SHEET_MODE_ORDER: SheetMode[] = ['collapsed', 'half', 'expanded']
+
+function getNextSheetMode(mode: SheetMode): SheetMode {
+  const i = SHEET_MODE_ORDER.indexOf(mode)
+  return SHEET_MODE_ORDER[Math.min(i + 1, SHEET_MODE_ORDER.length - 1)]
+}
+
+function getPrevSheetMode(mode: SheetMode): SheetMode {
+  const i = SHEET_MODE_ORDER.indexOf(mode)
+  return SHEET_MODE_ORDER[Math.max(i - 1, 0)]
 }
 
 class MapErrorBoundary extends Component<
@@ -50,21 +62,16 @@ class MapErrorBoundary extends Component<
 }
 
 function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.innerWidth >= 768
-  })
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-    const mediaQuery = window.matchMedia('(min-width: 768px)')
-    const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches)
-    setIsDesktop(mediaQuery.matches)
-    mediaQuery.addEventListener('change', onChange)
-    return () => mediaQuery.removeEventListener('change', onChange)
-  }, [])
-
-  return isDesktop
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {}
+      const mq = window.matchMedia('(min-width: 768px)')
+      mq.addEventListener('change', onStoreChange)
+      return () => mq.removeEventListener('change', onStoreChange)
+    },
+    () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)').matches : false),
+    () => false
+  )
 }
 
 function QuickViewOverlay({
@@ -170,13 +177,12 @@ function QuickViewOverlay({
 
 export function BirdListPlaceholder() {
   const navigate = useNavigate()
-  const { location } = useLocation()
+  const { location, setQueryLocation } = useLocation()
   const [birds, setBirds] = useState<NearbyBird[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mobileView, setMobileView] = useState<MobileViewMode>('map')
   const [sheetMode, setSheetMode] = useState<SheetMode>('half')
-  const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all')
+  const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('10')
   const [groupFilter, setGroupFilter] = useState<NearbyBird['group'] | 'all'>('all')
   const [recentOnly, setRecentOnly] = useState(false)
   const [includeNonGameBirds, setIncludeNonGameBirds] = useState(false)
@@ -186,6 +192,43 @@ export function BirdListPlaceholder() {
   const [showFilterFade, setShowFilterFade] = useState(false)
   const filterScrollRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
+  const sheetDragRef = useRef({ startY: 0, startMode: 'half' as SheetMode })
+
+  const handleSheetPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      sheetDragRef.current = { startY: e.clientY, startMode: sheetMode }
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    },
+    [sheetMode]
+  )
+
+  const handleSheetPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const el = e.target as HTMLElement
+      el.releasePointerCapture?.(e.pointerId)
+      const deltaY = sheetDragRef.current.startY - e.clientY
+      const threshold = 40
+      if (deltaY > threshold) {
+        setSheetMode(getNextSheetMode(sheetDragRef.current.startMode))
+      } else if (deltaY < -threshold) {
+        setSheetMode(getPrevSheetMode(sheetDragRef.current.startMode))
+      }
+    },
+    []
+  )
+
+  const handleSheetKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === ' ') {
+        e.preventDefault()
+        setSheetMode((m) => getNextSheetMode(m))
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSheetMode((m) => getPrevSheetMode(m))
+      }
+    },
+    []
+  )
 
   const updateFilterFade = useCallback(() => {
     const el = filterScrollRef.current
@@ -223,7 +266,7 @@ export function BirdListPlaceholder() {
     }
   }
 
-  // When location context is lost (e.g. after reload), redirect to welcome
+  // When location context is lost (e.g. after reload), redirect to home
   useEffect(() => {
     if (!location) {
       navigate('/', { replace: true })
@@ -264,7 +307,6 @@ export function BirdListPlaceholder() {
     }
   }, [location])
 
-  const locationLabel = location ? `Location: ${location.label}` : ''
   const { tagsByBirdId, rarityByBirdId } = useBirdTags(location, birds)
 
   const visibleBirds = useMemo(() => {
@@ -274,9 +316,7 @@ export function BirdListPlaceholder() {
       filtered = filtered.filter((bird) => isInWingspan(bird.id))
     }
 
-    if (distanceFilter !== 'all') {
-      filtered = filtered.filter((bird) => bird.distanceMiles <= Number(distanceFilter))
-    }
+    filtered = filtered.filter((bird) => bird.distanceMiles <= Number(distanceFilter))
 
     if (groupFilter !== 'all') {
       filtered = filtered.filter((bird) => bird.group === groupFilter)
@@ -397,24 +437,27 @@ export function BirdListPlaceholder() {
   }
 
   return (
-    <div className="min-h-screen bg-app-background">
-      <AppHeader className="px-4 pb-4 pt-4 md:px-6">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+    <div className="flex h-full min-h-[100dvh] flex-col overflow-hidden bg-app-background">
+      <AppHeader className="shrink-0 px-4 pb-4 pt-4 md:px-6">
+        <h1 className="sr-only">
+          Birds near {location.source === 'geo' ? 'you' : location.label}
+        </h1>
+        <div className="mb-3 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex shrink-0 cursor-pointer items-center text-app-accent-secondary hover:opacity-80"
+            aria-label="Go to home"
+          >
             <FeatherFinderMark showName={false} />
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="font-kodchasan text-xs text-app-accent-secondary hover:opacity-80"
-            >
-              ← Back
-            </button>
+          </button>
+          <div className="min-w-0 flex-1">
+            <LocationSearchBar
+              mode="results"
+              compact
+              onCommitLocation={(loc) => setQueryLocation(loc.label, loc.lat, loc.lng, loc.label)}
+            />
           </div>
-          <h1 className="font-kodchasan text-xl font-bold text-app-text md:text-2xl">Birds Near You</h1>
-          <span className="font-kodchasan text-xs text-app-text/70">{locationLabel}</span>
-        </div>
-        <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_2px_8px_rgba(78,54,38,0.08)]">
-          <p className="font-kodchasan text-sm text-app-text/60">Search birds, locations, or hotspots</p>
         </div>
         <div className="mt-3 flex items-stretch gap-2 pb-1">
           <div className="relative flex min-w-0 flex-1 items-center">
@@ -423,26 +466,32 @@ export function BirdListPlaceholder() {
               className="flex h-10 w-full items-center overflow-x-auto overflow-y-hidden"
             >
               <div className="flex h-10 items-center gap-2 pr-12">
-              {(['all', '10', '25'] as const).map((distance) => (
-                <button
-                  key={distance}
-                  type="button"
-                  onClick={() => setDistanceFilter(distance)}
-                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
-                >
-                  {distance === 'all' ? 'All distances' : `Under ${distance} mi`}
-                </button>
-              ))}
-              {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group) => (
-                <button
-                  key={group}
-                  type="button"
-                  onClick={() => setGroupFilter(group)}
-                  className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${groupFilter === group ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
-                >
-                  {group === 'all' ? 'All groups' : group}
-                </button>
-              ))}
+              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Distance filter">
+                {(['10', '25'] as const).map((distance, i) => (
+                  <button
+                    key={distance}
+                    type="button"
+                    onClick={() => setDistanceFilter(distance)}
+                    aria-pressed={distanceFilter === distance}
+                    className={`flex h-10 items-center px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
+                  >
+                    {distance === '25' ? 'Within 25 mi' : `Under ${distance} mi`}
+                  </button>
+                ))}
+              </div>
+              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Bird group filter">
+                {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group, i) => (
+                  <button
+                    key={group}
+                    type="button"
+                    onClick={() => setGroupFilter(group)}
+                    aria-pressed={groupFilter === group}
+                    className={`flex h-10 shrink-0 items-center px-3 font-kodchasan text-sm ${groupFilter === group ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
+                  >
+                    {group === 'all' ? 'All' : group}
+                  </button>
+                ))}
+              </div>
               <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Wingspan bird filter">
                 <button
                   type="button"
@@ -487,13 +536,13 @@ export function BirdListPlaceholder() {
         </div>
       </AppHeader>
 
-      <main className="mx-auto w-full max-w-360 md:px-6 md:pb-6">
+      <main className="flex min-h-0 flex-1 flex-col w-full md:px-6 md:pt-4 md:pb-4">
         {isDesktop ? (
-          <div className="gap-6 md:grid md:grid-cols-[minmax(340px,420px)_1fr]">
-            <section className="h-[calc(100vh-220px)] overflow-y-auto rounded-2xl bg-white/45 p-4">
+          <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(340px,420px)_1fr]">
+            <section className="min-h-0 overflow-y-auto rounded-2xl bg-white/45 p-4">
               {renderListContent('space-y-3')}
             </section>
-            <section className="h-[calc(100vh-220px)] overflow-hidden rounded-2xl">
+            <section className="min-h-0 overflow-hidden rounded-2xl">
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center rounded-2xl bg-white/70 p-4 text-center">
@@ -507,38 +556,18 @@ export function BirdListPlaceholder() {
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
+                  landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
+                  locationCenter={{ lat: location.lat, lng: location.lng }}
+                  fitBoundsBottomPaddingPx={24}
                   className="h-full w-full"
                 />
               </MapErrorBoundary>
             </section>
           </div>
-        ) : (
-          <div className="flex items-center justify-center gap-2 px-4 pt-4">
-            <button
-              type="button"
-              onClick={() => setMobileView('map')}
-              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'map' ? 'bg-app-accent text-white' : 'bg-white/80 text-app-text'}`}
-            >
-              Map
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileView('list')}
-              className={`rounded-full px-4 py-2 font-kodchasan text-sm ${mobileView === 'list' ? 'bg-app-accent text-white' : 'bg-white/80 text-app-text'}`}
-            >
-              List
-            </button>
-          </div>
-        )}
+        ) : null}
 
-        {!isDesktop && mobileView === 'list' && (
-            <section className="px-4 pb-6 pt-4">
-              {renderListContent('space-y-3')}
-            </section>
-          )}
-
-        {!isDesktop && mobileView === 'map' && (
-            <section className="relative h-[calc(100vh-250px)] overflow-hidden">
+        {!isDesktop && (
+            <section className="relative min-h-[50vh] flex-1 overflow-hidden">
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center bg-white/70 p-4 text-center">
@@ -552,45 +581,52 @@ export function BirdListPlaceholder() {
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
+                  landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
+                  locationCenter={{ lat: location.lat, lng: location.lng }}
+                  fitBoundsBottomPaddingPx={
+                    sheetMode === 'collapsed' ? 110 : sheetMode === 'half' ? 240 : 330
+                  }
                   className="h-full w-full"
                 />
               </MapErrorBoundary>
 
-              <div className={`absolute inset-x-0 bottom-0 rounded-t-3xl bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_24px_rgba(78,54,38,0.2)] ${SHEET_HEIGHT_CLASS[sheetMode]}`}>
-                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-app-border-muted" />
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="font-kodchasan text-sm font-bold text-app-text">
-                    {visibleBirds.length} birds nearby
-                  </p>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setSheetMode('collapsed')}
-                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
-                    >
-                      Peek
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSheetMode('half')}
-                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
-                    >
-                      Cards
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSheetMode('expanded')}
-                      className="rounded-lg border border-app-border-muted/70 px-2 py-1 font-kodchasan text-xs text-app-text"
-                    >
-                      Full
-                    </button>
-                  </div>
-                </div>
-                <div className="h-[calc(100%-3.5rem)] overflow-y-auto pr-1">
+              <div className={`absolute inset-x-0 bottom-0 z-1000 rounded-t-3xl bg-app-surface px-4 shadow-[0_-4px_12px_rgba(78,54,38,0.12)] ${sheetMode === 'collapsed' ? 'pb-2 pt-2' : 'pb-4 pt-3'} ${SHEET_HEIGHT_CLASS[sheetMode]}`}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Drag to expand or collapse bird list"
+                  className={`mx-auto flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing ${sheetMode === 'collapsed' ? 'mb-1 h-8 w-14' : 'mb-3 h-6 w-12'}`}
+                  onPointerDown={handleSheetPointerDown}
+                  onPointerUp={handleSheetPointerUp}
+                  onPointerCancel={handleSheetPointerUp}
+                  onKeyDown={handleSheetKeyDown}
+                >
                   {sheetMode === 'collapsed' ? (
-                    <p className="font-kodchasan text-sm text-app-text/70">
-                      Pull up to preview nearby birds.
-                    </p>
+                    <svg
+                      aria-hidden
+                      viewBox="0 0 24 24"
+                      className="h-6 w-9 text-app-border-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m6 16 6-6 6 6" />
+                      <path d="m6 12 6-6 6 6" />
+                    </svg>
+                  ) : (
+                    <div className="h-1.5 w-12 rounded-full bg-app-border-muted" />
+                  )}
+                </div>
+                <div className={`flex items-center ${sheetMode === 'collapsed' ? 'mb-1 justify-center' : 'mb-3 justify-between'}`}>
+                  <p className="font-kodchasan text-sm font-bold text-app-text">
+                    {visibleBirds.length >= 100 ? '100+' : visibleBirds.length} birds found in this area
+                  </p>
+                </div>
+                <div className={`${sheetMode === 'collapsed' ? 'h-auto' : 'h-[calc(100%-3.5rem)] overflow-y-auto pr-1'}`}>
+                  {sheetMode === 'collapsed' ? (
+                    null
                   ) : (
                     renderListContent('space-y-2')
                   )}

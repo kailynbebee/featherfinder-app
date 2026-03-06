@@ -40,6 +40,50 @@ type EBirdObservation = {
 }
 
 const KM_PER_MILE = 1.60934
+const RAPTOR_KEYWORDS = [
+  'eagle',
+  'hawk',
+  'falcon',
+  'kestrel',
+  'owl',
+  'osprey',
+  'vulture',
+  'kite',
+  'harrier',
+  'condor',
+] as const
+const WOODPECKER_KEYWORDS = ['woodpecker', 'flicker', 'sapsucker'] as const
+const SONGBIRD_KEYWORDS = [
+  'cardinal',
+  'sparrow',
+  'finch',
+  'warbler',
+  'swallow',
+  'wren',
+  'thrush',
+  'vireo',
+  'tanager',
+  'bunting',
+  'oriole',
+  'jay',
+  'chickadee',
+  'titmouse',
+  'nuthatch',
+  'kinglet',
+  'towhee',
+  'grosbeak',
+  'lark',
+  'pipit',
+  'mockingbird',
+] as const
+
+function inferBirdGroup(commonName: string): NearbyBird['group'] {
+  const lower = commonName.toLowerCase()
+  if (RAPTOR_KEYWORDS.some((keyword) => lower.includes(keyword))) return 'raptor'
+  if (WOODPECKER_KEYWORDS.some((keyword) => lower.includes(keyword))) return 'woodpecker'
+  if (SONGBIRD_KEYWORDS.some((keyword) => lower.includes(keyword))) return 'songbird'
+  return 'other'
+}
 
 function haversineMiles(
   lat1: number,
@@ -89,7 +133,7 @@ function mapObservationToNearbyBird(
     distanceMiles: Number(distanceMiles.toFixed(1)),
     lat: obs.lat,
     lng: obs.lng,
-    group: 'other',
+    group: inferBirdGroup(obs.comName),
     lastSeenHoursAgo,
   }
 }
