@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { LocationProvider } from '@/context/LocationContext'
@@ -9,16 +9,18 @@ import type { GeolocationResult } from '@/hooks/useGeolocation'
 
 // Mock useGeolocation
 const mockRequestLocation = vi.fn()
+const mockCancelLocationRequest = vi.fn()
 const mockUseGeolocation = vi.fn(() => ({
   status: 'idle',
   coords: null,
   error: null,
   requestLocation: mockRequestLocation,
+  cancelLocationRequest: mockCancelLocationRequest,
 }) as GeolocationResult)
 
 vi.mock('@/hooks/useGeolocation', () => ({
   useGeolocation: () => mockUseGeolocation(),
-  GEOLOCATION_TIMEOUT_MS: 30000,
+  GEOLOCATION_TIMEOUT_MS: 15000,
 }))
 
 vi.mock('@/services/geocoding', () => ({
@@ -41,6 +43,7 @@ function TestApp() {
 
 describe('HomeScreen', () => {
   beforeEach(() => {
+    cleanup()
     vi.clearAllMocks()
     mockGeocodeLocation.mockResolvedValue({
       lat: 40.7128,
@@ -53,6 +56,7 @@ describe('HomeScreen', () => {
       coords: null,
       error: null,
       requestLocation: mockRequestLocation,
+      cancelLocationRequest: mockCancelLocationRequest,
     } as GeolocationResult)
   })
 
@@ -107,11 +111,11 @@ describe('HomeScreen', () => {
     })
   })
 
-  describe('Discover birds near you flow', () => {
-    it('calls requestLocation when Discover birds near you is clicked', async () => {
+  describe('Discover Wingspan birds near you flow', () => {
+    it('calls requestLocation when Discover Wingspan birds near you is clicked', async () => {
       const user = userEvent.setup()
       render(<TestApp />)
-      await user.click(screen.getAllByRole('button', { name: /discover birds near you/i })[0])
+      await user.click(screen.getAllByRole('button', { name: /discover wingspan birds near you/i })[0])
       expect(mockRequestLocation).toHaveBeenCalledTimes(1)
     })
 
@@ -121,11 +125,28 @@ describe('HomeScreen', () => {
         coords: null,
         error: null,
         requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
       } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText('Finding your location...')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /finding your location/i })).toBeDisabled()
-      expect(screen.getByText(/Check your browser for a location permission prompt/)).toBeInTheDocument()
+      expect(screen.getByText(/Look for the location prompt in your browser/)).toBeInTheDocument()
+      expect(screen.getByText(/\(15s\)/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+    })
+
+    it('calls cancelLocationRequest when Cancel is clicked', async () => {
+      const user = userEvent.setup()
+      mockUseGeolocation.mockReturnValue({
+        status: 'loading',
+        coords: null,
+        error: null,
+        requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
+      } as GeolocationResult)
+      render(<TestApp />)
+      await user.click(screen.getByRole('button', { name: /cancel/i }))
+      expect(mockCancelLocationRequest).toHaveBeenCalledTimes(1)
     })
 
     it('shows denied message when user denies permission', () => {
@@ -134,9 +155,11 @@ describe('HomeScreen', () => {
         coords: null,
         error: 'Location access was denied.',
         requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
       } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText(/Location access was denied/)).toBeInTheDocument()
+      expect(screen.getByText(/Let's try something else/)).toBeInTheDocument()
       expect(screen.getByText(/enter a location instead/)).toBeInTheDocument()
     })
 
@@ -146,23 +169,37 @@ describe('HomeScreen', () => {
         coords: null,
         error: 'Location request timed out.',
         requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
       } as GeolocationResult)
       render(<TestApp />)
       expect(screen.getByText(/Location request timed out/)).toBeInTheDocument()
-      expect(screen.getByText(/You can retry with Discover birds near you/)).toBeInTheDocument()
+      expect(screen.getByText(/No worries — try again, or enter a location/)).toBeInTheDocument()
     })
 
-    it('navigates to /birds and stores coords when geolocation succeeds', async () => {
+    it('shows canceled message when location request is canceled', () => {
+      mockUseGeolocation.mockReturnValue({
+        status: 'canceled',
+        coords: null,
+        error: 'Location request canceled.',
+        requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
+      } as GeolocationResult)
+      render(<TestApp />)
+      expect(screen.getByText(/Location request canceled/)).toBeInTheDocument()
+    })
+
+    it('navigates to /birds and stores a non-generic geo label when geolocation succeeds', async () => {
       mockUseGeolocation.mockReturnValue({
         status: 'success',
         coords: { lat: 45.5, lng: -122.6 },
         error: null,
         requestLocation: mockRequestLocation,
+        cancelLocationRequest: mockCancelLocationRequest,
       } as GeolocationResult)
       render(<TestApp />)
       await waitFor(
         () => {
-          expect(screen.getByDisplayValue('Nearby')).toBeInTheDocument()
+          expect(screen.getByDisplayValue('45.5000, -122.6000')).toBeInTheDocument()
         },
         { timeout: 3000 }
       )

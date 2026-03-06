@@ -34,6 +34,28 @@ body {
   min-height: 100%;
 }
 
+/* Smooth the home -> results handoff. */
+@keyframes homeToResultsEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-to-results-enter {
+  animation: homeToResultsEnter 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-to-results-enter {
+    animation: none;
+  }
+}
+
 /* Keep map attribution and controls readable at WCAG AAA contrast. */
 .leaflet-control-attribution,
 .leaflet-control-attribution a,

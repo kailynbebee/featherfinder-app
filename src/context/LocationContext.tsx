@@ -15,7 +15,7 @@ export type LocationValue = {
 type LocationContextValue = {
   location: LocationValue | null
   setQueryLocation: (query: string, lat: number, lng: number, label: string) => void
-  setGeoLocation: (lat: number, lng: number) => void
+  setGeoLocation: (lat: number, lng: number, label?: string) => void
   clearLocation: () => void
 }
 
@@ -51,12 +51,12 @@ export function LocationProvider({
     setInternalLocation({ source: 'query', query, lat, lng, label })
   }, [])
 
-  const setGeoLocation = useCallback((lat: number, lng: number) => {
+  const setGeoLocation = useCallback((lat: number, lng: number, label?: string) => {
     setInternalLocation({
       source: 'geo',
       lat,
       lng,
-      label: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+      label: label && label.trim().length > 0 ? label : `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
     })
   }, [])
 

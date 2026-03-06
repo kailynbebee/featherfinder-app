@@ -143,7 +143,15 @@ export async function reverseNominatimContext(bias: SuggestionBias): Promise<Rev
   if (!json || typeof json !== 'object') return null
   const address = (json as { address?: Record<string, string> }).address
   if (!address) return null
+  const city =
+    address.city ??
+    address.town ??
+    address.village ??
+    address.hamlet ??
+    address.municipality ??
+    null
   return {
+    city,
     state: address.state ?? null,
     county: address.county ?? null,
     countryCode: address.country_code?.toLowerCase() ?? null,

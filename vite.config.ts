@@ -81,11 +81,12 @@ function locationApiPlugin() {
         try {
           const ctx = await reverseNominatimContext({ lat: latNum, lng: lngNum })
           if (!ctx) {
-            sendJson(res, 200, { state: null, countryCode: null, regionCode: null })
+            sendJson(res, 200, { city: null, state: null, countryCode: null, regionCode: null })
             return
           }
           const regionCode = toEbirdRegionCode(ctx.countryCode, ctx.state)
           sendJson(res, 200, {
+            city: ctx.city,
             state: ctx.state,
             countryCode: ctx.countryCode,
             regionCode,

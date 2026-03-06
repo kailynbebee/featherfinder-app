@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from '@/context/LocationContext'
 import { useLocationSearchController } from '@/features/location-search/useLocationSearchController'
 import { useRecentLocations } from '@/features/location-search/useRecentLocations'
@@ -67,6 +67,11 @@ function renderPrimarySuggestionText(primary: string, rawQuery: string) {
   return <span>{primary}</span>
 }
 
+function getGeoDisplayLabel(label: string): string {
+  const trimmed = label.trim()
+  return trimmed.length > 0 ? trimmed : 'Nearby'
+}
+
 export type LocationSearchBarMode = 'home' | 'results'
 
 type LocationSearchBarProps = {
@@ -92,6 +97,10 @@ export function LocationSearchBar({
   const { location } = useLocation()
   const [isFocused, setIsFocused] = useState(false)
   const [activeRecentIndex, setActiveRecentIndex] = useState(-1)
+  const preferredDropdownPlacement = mode === 'results' ? 'bottom' : 'top'
+  const [dropdownPlacement, setDropdownPlacement] = useState<'top' | 'bottom'>(preferredDropdownPlacement)
+  const formRef = useRef<HTMLFormElement | null>(null)
+  const dropdownRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const skipResultsPrefillOnNextFocusRef = useRef(false)
   const { recentLocations, addRecentLocation } = useRecentLocations()
@@ -109,7 +118,7 @@ export function LocationSearchBar({
   const displayValue =
     mode === 'results' && location && !isFocused
       ? location.source === 'geo'
-        ? 'Nearby'
+        ? getGeoDisplayLabel(location.label)
         : location.label
       : search.query
 
@@ -119,7 +128,7 @@ export function LocationSearchBar({
     if (skipResultsPrefillOnNextFocusRef.current) {
       skipResultsPrefillOnNextFocusRef.current = false
     } else if (mode === 'results' && location) {
-      search.handleInputChange(location.source === 'geo' ? 'Nearby' : location.label)
+      search.handleInputChange(location.source === 'geo' ? getGeoDisplayLabel(location.label) : location.label)
     }
     search.setIsOpen(true)
   }
@@ -141,7 +150,7 @@ export function LocationSearchBar({
 
   const defaultResultsQuery =
     mode === 'results' && location
-      ? (location.source === 'geo' ? 'Nearby' : location.label).trim()
+      ? (location.source === 'geo' ? getGeoDisplayLabel(location.label) : location.label).trim()
       : ''
   const isPrefilledResultsFocus =
     mode === 'results' &&
@@ -161,10 +170,7 @@ export function LocationSearchBar({
   const showDropdown =
     search.isOpen &&
     (showRecent || showLoadingState || showSuggestionOptions)
-  const dropdownPositionClass =
-    mode === 'results'
-      ? 'top-[calc(100%+8px)]'
-      : 'bottom-[calc(100%+8px)]'
+  const dropdownPositionClass = dropdownPlacement === 'bottom' ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+8px)]'
   const resultsPlaceholder = 'Search birds, locations, or hotspots'
   const showClearButton =
     displayValue.trim().length > 0 &&
@@ -235,10 +241,63 @@ export function LocationSearchBar({
       ? recentOptionId(activeRecentIndex)
       : search.activeDescendantId
 
+  const recalculateDropdownPlacement = useCallback(() => {
+    if (!showDropdown || !formRef.current || !dropdownRef.current || typeof window === 'undefined') return
+    const anchorRect = formRef.current.getBoundingClientRect()
+    const dropdownHeight = dropdownRef.current.offsetHeight || 220
+    const verticalGap = 8
+    const spaceAbove = anchorRect.top - verticalGap
+    const spaceBelow = window.innerHeight - anchorRect.bottom - verticalGap
+
+    if (preferredDropdownPlacement === 'top') {
+      if (dropdownHeight > spaceAbove && spaceBelow > spaceAbove) {
+        setDropdownPlacement('bottom')
+      } else {
+        setDropdownPlacement('top')
+      }
+      return
+    }
+
+    if (dropdownHeight > spaceBelow && spaceAbove > spaceBelow) {
+      setDropdownPlacement('top')
+    } else {
+      setDropdownPlacement('bottom')
+    }
+  }, [preferredDropdownPlacement, showDropdown])
+
+  useEffect(() => {
+    setDropdownPlacement(preferredDropdownPlacement)
+  }, [preferredDropdownPlacement])
+
+  useEffect(() => {
+    if (!showDropdown) return
+    recalculateDropdownPlacement()
+
+    const handleViewportChange = () => recalculateDropdownPlacement()
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [
+    recalculateDropdownPlacement,
+    recentLocations.length,
+    search.suggestions.length,
+    showDropdown,
+    showLoadingState,
+    showRecent,
+    showSuggestionOptions,
+  ])
+
   return (
-    <form onSubmit={handleSubmit} className={`relative w-full ${className}`}>
+    <form ref={formRef} onSubmit={handleSubmit} className={`relative w-full ${className}`}>
       {showDropdown && (
-        <div className={`absolute inset-x-0 ${dropdownPositionClass} z-1210 overflow-hidden rounded-xl border border-app-border-muted/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]`}>
+        <div
+          ref={dropdownRef}
+          className={`absolute inset-x-0 ${dropdownPositionClass} z-1210 overflow-hidden rounded-xl border border-app-border-muted/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]`}
+        >
           {showRecent && (
             <>
               <p className="px-4 py-2 font-kodchasan text-xs font-medium text-app-text/70">
@@ -325,7 +384,7 @@ export function LocationSearchBar({
             ? compact
               ? 'flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-[0_2px_8px_rgba(78,54,38,0.08)]'
               : 'flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-[0_2px_8px_rgba(78,54,38,0.08)]'
-            : 'flex items-center gap-4 rounded-[14px] bg-white px-6 py-4 shadow-[0px_0px_33px_3px_rgba(74,55,40,0.05)]'
+            : 'flex items-center gap-4 rounded-[14px] border border-app-border/35 bg-white px-6 py-4 shadow-[0_1px_6px_rgba(74,55,40,0.06)]'
         }
       >
         <input

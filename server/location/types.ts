@@ -10,6 +10,7 @@ export type LocationSuggestion = {
 }
 
 export type ReverseGeocodeContext = {
+  city: string | null
   state: string | null
   county: string | null
   countryCode: string | null

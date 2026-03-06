@@ -74,7 +74,7 @@ describe('BirdListPlaceholder', () => {
     render(<TestApp initialPath="/birds" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Discover birds near you/)).toBeInTheDocument()
+      expect(screen.getByText(/Discover Wingspan birds near you/)).toBeInTheDocument()
     })
   })
 

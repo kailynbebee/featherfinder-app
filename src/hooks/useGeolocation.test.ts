@@ -3,13 +3,16 @@ import { renderHook, act } from '@testing-library/react'
 import { GEOLOCATION_MAX_AGE_MS, GEOLOCATION_TIMEOUT_MS, useGeolocation } from './useGeolocation'
 
 describe('useGeolocation', () => {
-  let mockGetCurrentPosition: ReturnType<typeof vi.fn>
+  let mockWatchPosition: ReturnType<typeof vi.fn>
+  let mockClearWatch: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    mockGetCurrentPosition = vi.fn()
+    mockWatchPosition = vi.fn()
+    mockClearWatch = vi.fn()
     vi.stubGlobal('navigator', {
       geolocation: {
-        getCurrentPosition: mockGetCurrentPosition,
+        watchPosition: mockWatchPosition,
+        clearWatch: mockClearWatch,
       },
     })
   })
@@ -27,18 +30,19 @@ describe('useGeolocation', () => {
       result.current.requestLocation()
     })
     expect(result.current.status).toBe('loading')
-    expect(mockGetCurrentPosition).toHaveBeenCalled()
+    expect(mockWatchPosition).toHaveBeenCalled()
   })
 
   it('sets success state and coords when geolocation succeeds', async () => {
     const { result } = renderHook(() => useGeolocation())
-    mockGetCurrentPosition.mockImplementation((success: (p: GeolocationPosition) => void) => {
+    mockWatchPosition.mockImplementation((success: (p: GeolocationPosition) => void) => {
       queueMicrotask(() => {
         success({
           coords: { latitude: 45.5, longitude: -122.6 } as GeolocationCoordinates,
           timestamp: Date.now(),
         } as GeolocationPosition)
       })
+      return 123
     })
 
     act(() => {
@@ -53,12 +57,14 @@ describe('useGeolocation', () => {
     expect(result.current.status).toBe('success')
     expect(result.current.coords).toEqual({ lat: 45.5, lng: -122.6 })
     expect(result.current.error).toBeNull()
+    expect(mockClearWatch).toHaveBeenCalledWith(123)
   })
 
   it('sets denied state when user denies permission', async () => {
     const { result } = renderHook(() => useGeolocation())
-    mockGetCurrentPosition.mockImplementation((_success: unknown, error: (e: GeolocationPositionError) => void) => {
+    mockWatchPosition.mockImplementation((_success: unknown, error: (e: GeolocationPositionError) => void) => {
       error({ code: 1, message: 'User denied' } as GeolocationPositionError)
+      return 222
     })
 
     act(() => {
@@ -71,8 +77,9 @@ describe('useGeolocation', () => {
 
   it('sets error state when position is unavailable', async () => {
     const { result } = renderHook(() => useGeolocation())
-    mockGetCurrentPosition.mockImplementation((_success: unknown, error: (e: GeolocationPositionError) => void) => {
+    mockWatchPosition.mockImplementation((_success: unknown, error: (e: GeolocationPositionError) => void) => {
       error({ code: 2, message: 'Position unavailable' } as GeolocationPositionError)
+      return 333
     })
 
     act(() => {
@@ -84,17 +91,40 @@ describe('useGeolocation', () => {
   })
 
   it('sets error state when request times out', async () => {
+    vi.useFakeTimers()
     const { result } = renderHook(() => useGeolocation())
-    mockGetCurrentPosition.mockImplementation((_success: unknown, error: (e: GeolocationPositionError) => void) => {
-      error({ code: 3, message: 'Timeout' } as GeolocationPositionError)
-    })
+    mockWatchPosition.mockReturnValue(444)
 
     act(() => {
       result.current.requestLocation()
     })
 
+    act(() => {
+      vi.advanceTimersByTime(GEOLOCATION_TIMEOUT_MS)
+    })
+
     expect(result.current.status).toBe('error')
-    expect(result.current.error).toBe('Location request timed out. Please try again or enter a location.')
+    expect(result.current.error).toBe('Location request timed out.')
+    expect(mockClearWatch).toHaveBeenCalledWith(444)
+    vi.useRealTimers()
+  })
+
+  it('supports canceling an in-flight request', () => {
+    const { result } = renderHook(() => useGeolocation())
+    mockWatchPosition.mockReturnValue(555)
+
+    act(() => {
+      result.current.requestLocation()
+    })
+    expect(result.current.status).toBe('loading')
+
+    act(() => {
+      result.current.cancelLocationRequest()
+    })
+
+    expect(result.current.status).toBe('canceled')
+    expect(result.current.error).toBe('Location request canceled.')
+    expect(mockClearWatch).toHaveBeenCalledWith(555)
   })
 
   it('sets unavailable state when geolocation is not supported', () => {
@@ -114,7 +144,7 @@ describe('useGeolocation', () => {
     act(() => {
       result.current.requestLocation()
     })
-    expect(mockGetCurrentPosition).toHaveBeenCalledWith(
+    expect(mockWatchPosition).toHaveBeenCalledWith(
       expect.any(Function),
       expect.any(Function),
       expect.objectContaining({

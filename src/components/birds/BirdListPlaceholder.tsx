@@ -588,9 +588,9 @@ export function BirdListPlaceholder() {
   }
 
   return (
-    <div className="flex h-full min-h-dvh flex-col overflow-hidden bg-app-background">
+    <div className="home-to-results-enter flex h-full min-h-dvh flex-col overflow-hidden bg-app-background">
       <AppHeader className="shrink-0 px-4 pb-4 pt-4 md:px-6">
-        <h1 className="m-0 text-[1px] leading-px text-app-text">
+        <h1 className="sr-only">
           Birds near {location.source === 'geo' ? 'you' : location.label}
         </h1>
         <div className="mb-3 flex items-center gap-3">
