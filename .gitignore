@@ -147,5 +147,7 @@ storybook-static
 # pa11y accessibility report output
 pa11y-report/
 
-# Khroma export (user-specific)
-visual-explorations/my_khroma_data.json
+# Local helper scripts (do not commit)
+scripts/link-issues-to-project.sh
+scripts/rebase-sequence-editor.sh
+scripts/reword-closes-editor.sh
