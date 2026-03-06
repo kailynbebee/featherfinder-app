@@ -150,12 +150,12 @@ function buildNominatimUrl(query: string, limit: number, options?: SearchLocatio
   url.searchParams.set('q', query)
   url.searchParams.set('format', 'jsonv2')
   url.searchParams.set('limit', String(limit))
-  const countryHint = options?.countryHint?.trim().toLowerCase()
+  const countryHint = options?.countryHint?.trim().toLowerCase() ?? null
   const useUsByZip = US_ZIP_QUERY_REGEX.test(query) || PARTIAL_US_ZIP_QUERY_REGEX.test(query)
   const isExplicitPlaceQuery = query.includes(',') || query.trim().split(/\s+/).length > 1
   const applyCountryHint =
-    Boolean(countryHint) &&
-    /^[a-z]{2}$/.test(countryHint ?? '') &&
+    countryHint !== null &&
+    /^[a-z]{2}$/.test(countryHint) &&
     !isExplicitPlaceQuery &&
     query.trim().length <= 4
   if (useUsByZip) {
