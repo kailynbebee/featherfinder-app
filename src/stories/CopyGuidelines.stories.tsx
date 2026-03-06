@@ -7,7 +7,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Editorial and copy preferences. See docs/COPY_GUIDELINES.md for the full list.',
+          'Editorial and copy preferences. See docs/content/COPY_GUIDELINES.md for the full list.',
       },
     },
   },
@@ -29,7 +29,7 @@ export const CopyPreferences: StoryObj = {
   render: () => (
     <div className="font-kodchasan max-w-2xl space-y-6">
       <p className="text-sm text-app-text-muted">
-        See <code className="rounded bg-app-border-muted/30 px-1">docs/COPY_GUIDELINES.md</code> for the full list.
+        See <code className="rounded bg-app-border-muted/30 px-1">docs/content/COPY_GUIDELINES.md</code> for the full list.
       </p>
       {GUIDELINES.map((g) => (
         <div key={g.category} className="rounded-xl border border-app-border p-4">

@@ -31,21 +31,21 @@ Reusable reference for FeatherFinder product decisions. Wingspan bridges the boa
 - **Habitat**: Forest, Grassland, Wetland
 - **Nest type**: Platform, Cavity, Ground, Bowl, etc.
 - **Wingspan**: In cm (card art)
-- **Victory points**: 0–10
+- **Victory points**: 0-10
 - **Food cost**: Invertebrate, seed, fish, fruit, rodent, nectar
 
 ## Data Sources for Updates
 
 - **Community spreadsheets**: [BoardGameGeek](https://boardgamegeek.com/filepage/193164/wingspan-spreadsheet-bird-cards-bonus-cards-end-of), [Google Sheets](https://docs.google.com/spreadsheets/d/1G8w-iSmqmXbF1pCmzsBT6GkxwwEb4vZ9L30bO-6_Z8A/edit)
-- **R package**: `wingspan` (coolbutuseless) — scientific names, base + Europe + Oceania. [GitHub](https://github.com/coolbutuseless/wingspan)
+- **R package**: `wingspan` (coolbutuseless) - scientific names, base + Europe + Oceania. [GitHub](https://github.com/coolbutuseless/wingspan)
 - **Stonemaier**: Official announcements for new expansions
 
 ## Matching Strategy
 
 eBird species codes (our canonical IDs) map to Wingspan birds via:
 
-1. **Scientific name** (primary) — most reliable
-2. **Normalized common name** — fallback when scientific names differ slightly
+1. **Scientific name** (primary) - most reliable
+2. **Normalized common name** - fallback when scientific names differ slightly
 
 ## Adding New Expansion Birds
 

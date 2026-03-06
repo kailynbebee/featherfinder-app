@@ -1,5 +1,5 @@
 {
-  "_comment": "Wingspan bird names for eBird matching. Sources: coolbutuseless/wingspan, wingsplain.com, BGG, WINGSPAN_GAME_CONTEXT.md",
+  "_comment": "Wingspan bird names for eBird matching. Sources: coolbutuseless/wingspan, wingsplain.com, BGG, docs/product/WINGSPAN_GAME_CONTEXT.md",
   "base": [
     "American Robin", "Bald Eagle", "Barn Owl", "Barn Swallow", "Blue Jay", "Canada Goose",
     "Carolina Wren", "Chipping Sparrow", "Common Grackle", "Dark-eyed Junco", "Downy Woodpecker",
