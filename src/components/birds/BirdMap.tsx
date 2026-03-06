@@ -107,6 +107,19 @@ function SelectedBirdSync({
   return null
 }
 
+function DecorativeMapSync() {
+  const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+    container.setAttribute('tabindex', '-1')
+    container.setAttribute('aria-hidden', 'true')
+    container.setAttribute('role', 'presentation')
+  }, [map])
+
+  return null
+}
+
 function markerIcon(isSelected: boolean): DivIcon {
   return L.divIcon({
     className: 'bird-map-marker',
@@ -221,59 +234,69 @@ export function BirdMap({
   }
 
   return (
-    <MapContainer center={[center.lat, center.lng]} zoom={11} scrollWheelZoom className={className}>
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-      />
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
-      />
-      <ClusterBoundsSync
-        birds={birds}
-        fallbackCenter={center}
-        fallbackRadiusMiles={landmarkDistanceMiles}
-        searchCenter={searchCenter}
-        searchRadiusMiles={searchRadiusMiles}
-        bottomPaddingPx={fitBoundsBottomPaddingPx}
-      />
-      <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} isPaused={pauseSelectionFlyTo} />
-      {searchCenter && typeof searchRadiusMiles === 'number' ? (
-        <Circle
-          center={[searchCenter.lat, searchCenter.lng]}
-          radius={searchRadiusMiles * 1609.34}
-          pathOptions={{
-            color: palette.accentSecondaryHover,
-            weight: 1.5,
-            fillColor: palette.accentSecondaryHover,
-            fillOpacity: 0.08,
-          }}
+    <div className={`relative ${className ?? ''}`} aria-hidden="true" role="presentation">
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={11}
+        scrollWheelZoom
+        keyboard={false}
+        zoomControl={false}
+        attributionControl={false}
+        className="h-full w-full"
+      >
+        <DecorativeMapSync />
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
         />
-      ) : null}
-      {places.map((place) => (
-        <Marker
-          key={place.id}
-          position={[place.lat, place.lng]}
-          icon={placeIcon(place.source)}
-        >
-          <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
-            <span className="font-kodchasan text-xs text-app-text">
-              {place.name} · {place.source === 'hotspot' ? 'hotspot' : 'natural place'}
-            </span>
-          </Tooltip>
-        </Marker>
-      ))}
-      {birds.map((bird) => {
-        const isSelected = bird.id === selectedBirdId
-        return (
-          <Marker
-            key={bird.id}
-            position={[bird.lat, bird.lng]}
-            icon={markerIcon(isSelected)}
-            eventHandlers={{ click: () => onSelectBird(bird.id) }}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+        />
+        <ClusterBoundsSync
+          birds={birds}
+          fallbackCenter={center}
+          fallbackRadiusMiles={landmarkDistanceMiles}
+          searchCenter={searchCenter}
+          searchRadiusMiles={searchRadiusMiles}
+          bottomPaddingPx={fitBoundsBottomPaddingPx}
+        />
+        <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} isPaused={pauseSelectionFlyTo} />
+        {searchCenter && typeof searchRadiusMiles === 'number' ? (
+          <Circle
+            center={[searchCenter.lat, searchCenter.lng]}
+            radius={searchRadiusMiles * 1609.34}
+            pathOptions={{
+              color: palette.accentSecondaryHover,
+              weight: 1.5,
+              fillColor: palette.accentSecondaryHover,
+              fillOpacity: 0.08,
+            }}
           />
-        )
-      })}
-    </MapContainer>
+        ) : null}
+        {places.map((place) => (
+          <Marker
+            key={place.id}
+            position={[place.lat, place.lng]}
+            icon={placeIcon(place.source)}
+          >
+            <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+              <span className="font-kodchasan text-xs text-app-text">
+                {place.name} · {place.source === 'hotspot' ? 'hotspot' : 'natural place'}
+              </span>
+            </Tooltip>
+          </Marker>
+        ))}
+        {birds.map((bird) => {
+          const isSelected = bird.id === selectedBirdId
+          return (
+            <Marker
+              key={bird.id}
+              position={[bird.lat, bird.lng]}
+              icon={markerIcon(isSelected)}
+              eventHandlers={{ click: () => onSelectBird(bird.id) }}
+            />
+          )
+        })}
+      </MapContainer>
+    </div>
   )
 }

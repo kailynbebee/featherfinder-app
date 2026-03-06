@@ -33,3 +33,23 @@ body {
   height: 100%;
   min-height: 100%;
 }
+
+/* Keep map attribution and controls readable at WCAG AAA contrast. */
+.leaflet-control-attribution,
+.leaflet-control-attribution a,
+.leaflet-control-zoom a {
+  color: #1f1c16 !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(255, 253, 248, 0.92) !important;
+}
+
+.leaflet-control-attribution a {
+  text-decoration: underline !important;
+}
+
+/* We render our own static attribution text in BirdMap. */
+.leaflet-control-attribution {
+  display: none !important;
+}
