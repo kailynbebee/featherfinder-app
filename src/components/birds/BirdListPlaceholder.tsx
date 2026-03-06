@@ -556,6 +556,7 @@ export function BirdListPlaceholder() {
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
+                  pauseSelectionFlyTo={quickViewBird !== null}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
                   locationCenter={{ lat: location.lat, lng: location.lng }}
                   fitBoundsBottomPaddingPx={24}
@@ -581,6 +582,7 @@ export function BirdListPlaceholder() {
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
                   onSelectBird={setSelectedBirdId}
+                  pauseSelectionFlyTo={quickViewBird !== null}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
                   locationCenter={{ lat: location.lat, lng: location.lng }}
                   fitBoundsBottomPaddingPx={

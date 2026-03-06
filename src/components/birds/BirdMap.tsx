@@ -10,6 +10,7 @@ type BirdMapProps = {
   birds: NearbyBird[]
   selectedBirdId: string | null
   onSelectBird: (birdId: string) => void
+  pauseSelectionFlyTo?: boolean
   landmarkDistanceMiles?: number
   locationCenter?: { lat: number; lng: number }
   fitBoundsBottomPaddingPx?: number
@@ -73,7 +74,15 @@ function ClusterBoundsSync({
   return null
 }
 
-function SelectedBirdSync({ birds, selectedBirdId }: { birds: NearbyBird[]; selectedBirdId: string | null }) {
+function SelectedBirdSync({
+  birds,
+  selectedBirdId,
+  isPaused = false,
+}: {
+  birds: NearbyBird[]
+  selectedBirdId: string | null
+  isPaused?: boolean
+}) {
   const map = useMap()
   const hasSkippedInitialFocus = useRef(false)
 
@@ -84,13 +93,14 @@ function SelectedBirdSync({ birds, selectedBirdId }: { birds: NearbyBird[]; sele
 
   useEffect(() => {
     if (!selectedBird) return
+    if (isPaused) return
     // Preserve initial "show the area" framing; only fly on later user-driven selections.
     if (!hasSkippedInitialFocus.current) {
       hasSkippedInitialFocus.current = true
       return
     }
     map.flyTo([selectedBird.lat, selectedBird.lng], map.getZoom(), { duration: 0.35 })
-  }, [selectedBird, map])
+  }, [selectedBird, map, isPaused])
 
   return null
 }
@@ -139,6 +149,7 @@ export function BirdMap({
   birds,
   selectedBirdId,
   onSelectBird,
+  pauseSelectionFlyTo = false,
   landmarkDistanceMiles = 25,
   locationCenter,
   fitBoundsBottomPaddingPx = 24,
@@ -219,7 +230,7 @@ export function BirdMap({
         fallbackRadiusMiles={landmarkDistanceMiles}
         bottomPaddingPx={fitBoundsBottomPaddingPx}
       />
-      <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} />
+      <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} isPaused={pauseSelectionFlyTo} />
       {places.map((place) => (
         <Marker
           key={place.id}
