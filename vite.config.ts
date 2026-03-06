@@ -7,6 +7,7 @@ import { reverseNominatimContext, searchNominatim } from './server/location/nomi
 import { toEbirdRegionCode } from './server/location/regionCode'
 import { fetchRarityFromStatusTrends } from './server/birds/statusTrendsRarity'
 import { TYPICALLY_COMMON_SPECIES } from './server/birds/typicallyCommonSpecies'
+import { TTLCache } from './server/location/cache'
 
 function sendJson(res: { statusCode: number; setHeader: (name: string, value: string) => void; end: (body: string) => void }, statusCode: number, payload: unknown) {
   res.statusCode = statusCode
@@ -15,6 +16,10 @@ function sendJson(res: { statusCode: number; setHeader: (name: string, value: st
 }
 
 const EBIRD_BASE = 'https://api.ebird.org/v2'
+const HOTSPOT_CACHE_TTL_MS = 2 * 60 * 1000
+const NATURAL_PLACES_CACHE_TTL_MS = 3 * 60 * 1000
+const hotspotCache = new TTLCache<unknown>(HOTSPOT_CACHE_TTL_MS)
+const naturalPlacesCache = new TTLCache<Array<{ name: string; lat: number; lng: number }>>(NATURAL_PLACES_CACHE_TTL_MS)
 
 function locationApiPlugin() {
   return {
@@ -111,6 +116,12 @@ function locationApiPlugin() {
           sendJson(res, 400, { error: 'lat and lng must be valid numbers' })
           return
         }
+        const cacheKey = `${latNum.toFixed(3)}:${lngNum.toFixed(3)}:${limit}`
+        const cached = naturalPlacesCache.get(cacheKey)
+        if (cached) {
+          sendJson(res, 200, cached)
+          return
+        }
 
         // Keep requests light (Nominatim policy), but target common birding place terms.
         const queries = ['wetland', 'lake', 'nature reserve', 'wildlife refuge', 'state park']
@@ -136,6 +147,7 @@ function locationApiPlugin() {
               results.push({ name, lat: place.lat, lng: place.lng })
             }
           }
+          naturalPlacesCache.set(cacheKey, results)
           sendJson(res, 200, results)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to fetch natural places'
@@ -204,6 +216,19 @@ function locationApiPlugin() {
           sendJson(res, 400, { error: 'lat and lng are required' })
           return
         }
+        const latNum = parseFloat(lat)
+        const lngNum = parseFloat(lng)
+        const distNum = parseFloat(dist)
+        if (Number.isNaN(latNum) || Number.isNaN(lngNum) || Number.isNaN(distNum)) {
+          sendJson(res, 400, { error: 'lat, lng, and dist must be valid numbers' })
+          return
+        }
+        const cacheKey = `${latNum.toFixed(3)}:${lngNum.toFixed(3)}:${distNum.toFixed(1)}`
+        const cached = hotspotCache.get(cacheKey)
+        if (cached) {
+          sendJson(res, 200, cached)
+          return
+        }
         const ebirdUrl = new URL(`${EBIRD_BASE}/ref/hotspot/geo`)
         ebirdUrl.searchParams.set('lat', lat)
         ebirdUrl.searchParams.set('lng', lng)
@@ -219,6 +244,7 @@ function locationApiPlugin() {
             sendJson(res, 502, { error: msg })
             return
           }
+          hotspotCache.set(cacheKey, data)
           sendJson(res, 200, data)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to fetch eBird hotspots'

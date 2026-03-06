@@ -160,6 +160,11 @@ function placeIcon(source: BirdingPlace['source']): DivIcon {
   })
 }
 
+const DEFAULT_BIRD_ICON = markerIcon(false)
+const SELECTED_BIRD_ICON = markerIcon(true)
+const HOTSPOT_PLACE_ICON = placeIcon('hotspot')
+const NATURAL_PLACE_ICON = placeIcon('natural')
+
 export function BirdMap({
   birds,
   selectedBirdId,
@@ -188,27 +193,44 @@ export function BirdMap({
       setPlaces([])
       return
     }
-    if (birds.length === 0) {
+    if (!isValidLatLng(center)) {
       setPlaces([])
       return
     }
-    let cancelled = false
+
+    const controller = new AbortController()
     const loadPlaces = async () => {
       try {
-        const data = await getNearbyBirdingPlaces(center.lat, center.lng, {
+        // Render hotspot markers first, then merge slower natural places.
+        const hotspotsOnly = await getNearbyBirdingPlaces(center.lat, center.lng, {
           distMiles: landmarkDistanceMiles,
           maxPlaces: landmarkDistanceMiles <= 10 ? 10 : 16,
+          includeNatural: false,
+          signal: controller.signal,
         })
-        if (!cancelled) setPlaces(data)
-      } catch {
-        if (!cancelled) setPlaces([])
+        if (!controller.signal.aborted) {
+          setPlaces(hotspotsOnly)
+        }
+
+        const withNaturals = await getNearbyBirdingPlaces(center.lat, center.lng, {
+          distMiles: landmarkDistanceMiles,
+          maxPlaces: landmarkDistanceMiles <= 10 ? 10 : 16,
+          includeNatural: true,
+          signal: controller.signal,
+        })
+        if (!controller.signal.aborted) {
+          setPlaces(withNaturals)
+        }
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return
+        if (!controller.signal.aborted) setPlaces([])
       }
     }
     void loadPlaces()
     return () => {
-      cancelled = true
+      controller.abort()
     }
-  }, [birds.length, center.lat, center.lng, landmarkDistanceMiles])
+  }, [center.lat, center.lng, landmarkDistanceMiles])
 
   if (import.meta.env.MODE === 'test') {
     return (
@@ -276,7 +298,7 @@ export function BirdMap({
           <Marker
             key={place.id}
             position={[place.lat, place.lng]}
-            icon={placeIcon(place.source)}
+            icon={place.source === 'hotspot' ? HOTSPOT_PLACE_ICON : NATURAL_PLACE_ICON}
           >
             <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
               <span className="font-kodchasan text-xs text-app-text">
@@ -291,7 +313,7 @@ export function BirdMap({
             <Marker
               key={bird.id}
               position={[bird.lat, bird.lng]}
-              icon={markerIcon(isSelected)}
+              icon={isSelected ? SELECTED_BIRD_ICON : DEFAULT_BIRD_ICON}
               eventHandlers={{ click: () => onSelectBird(bird.id) }}
             />
           )
