@@ -22,7 +22,7 @@ const SHEET_HEIGHT_RATIO: Record<Exclude<SheetMode, 'collapsed'>, number> = {
   half: 0.6,
   expanded: 1,
 }
-const COLLAPSED_SHEET_HEIGHT_PX = 104
+const COLLAPSED_SHEET_HEIGHT_PX = 74
 
 const SHEET_MODE_ORDER: SheetMode[] = ['collapsed', 'half', 'expanded']
 
@@ -438,7 +438,6 @@ export function BirdListPlaceholder() {
         const nearbyBirds = await getNearbyBirds(location)
         if (!cancelled) {
           setBirds(nearbyBirds)
-          setSelectedBirdId(nearbyBirds[0]?.id ?? null)
         }
       } catch (err) {
         if (!cancelled) {
@@ -488,8 +487,8 @@ export function BirdListPlaceholder() {
   }, [birds, includeNonGameBirds, distanceFilter, groupFilter, recentOnly, sortMode])
 
   useEffect(() => {
-    if (!selectedBirdId || !visibleBirds.some((bird) => bird.id === selectedBirdId)) {
-      setSelectedBirdId(visibleBirds[0]?.id ?? null)
+    if (selectedBirdId && !visibleBirds.some((bird) => bird.id === selectedBirdId)) {
+      setSelectedBirdId(null)
     }
   }, [visibleBirds, selectedBirdId])
 
@@ -589,9 +588,9 @@ export function BirdListPlaceholder() {
   }
 
   return (
-    <div className="flex h-full min-h-[100dvh] flex-col overflow-hidden bg-app-background">
+    <div className="flex h-full min-h-dvh flex-col overflow-hidden bg-app-background">
       <AppHeader className="shrink-0 px-4 pb-4 pt-4 md:px-6">
-        <h1 className="sr-only">
+        <h1 className="m-0 text-[1px] leading-px text-app-text">
           Birds near {location.source === 'geo' ? 'you' : location.label}
         </h1>
         <div className="mb-3 flex items-center gap-3">
@@ -615,7 +614,7 @@ export function BirdListPlaceholder() {
           <div className="relative flex min-w-0 flex-1 items-center">
             <div
               ref={filterScrollRef}
-              className="flex h-10 w-full items-center overflow-x-auto overflow-y-hidden"
+              className="flex h-10 w-full items-center overflow-x-auto overflow-y-hidden md:overflow-x-visible"
             >
               <div className="flex h-10 items-center gap-2 pr-12">
               <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Distance filter">
@@ -625,7 +624,7 @@ export function BirdListPlaceholder() {
                     type="button"
                     onClick={() => setDistanceFilter(distance)}
                     aria-pressed={distanceFilter === distance}
-                    className={`flex h-10 items-center px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
+                    className={`flex h-10 items-center px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
                   >
                     {distance === '25' ? 'Within 25 mi' : `Under ${distance} mi`}
                   </button>
@@ -638,7 +637,7 @@ export function BirdListPlaceholder() {
                     type="button"
                     onClick={() => setGroupFilter(group)}
                     aria-pressed={groupFilter === group}
-                    className={`flex h-10 shrink-0 items-center px-3 font-kodchasan text-sm ${groupFilter === group ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
+                    className={`flex h-10 shrink-0 items-center px-3 font-kodchasan text-sm ${groupFilter === group ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
                   >
                     {group === 'all' ? 'All' : group}
                   </button>
@@ -649,7 +648,7 @@ export function BirdListPlaceholder() {
                   type="button"
                   onClick={() => setIncludeNonGameBirds(false)}
                   aria-pressed={!includeNonGameBirds}
-                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'}`}
+                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
                 >
                   Wingspan birds
                 </button>
@@ -657,7 +656,7 @@ export function BirdListPlaceholder() {
                   type="button"
                   onClick={() => setIncludeNonGameBirds(true)}
                   aria-pressed={includeNonGameBirds}
-                  className={`flex h-10 items-center border-l border-app-border-muted/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'bg-white text-app-text hover:bg-app-background'}`}
+                  className={`flex h-10 items-center border-l border-app-border-muted/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
                 >
                   All birds
                 </button>
@@ -665,15 +664,15 @@ export function BirdListPlaceholder() {
               <button
                 type="button"
                 onClick={() => setRecentOnly((value) => !value)}
-                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-app-accent-secondary-hover' : 'border-app-border-muted/70 bg-white text-app-text hover:bg-app-background'}`}
+                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-teal-900' : 'border-app-border-muted/70 bg-white text-black hover:bg-app-background'}`}
               >
                 Last 24h
               </button>
               </div>
             </div>
-            {showFilterFade && (
+            {showFilterFade && !isDesktop && (
               <div
-                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-gradient-to-r from-transparent to-app-background"
+                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-linear-to-r from-transparent to-app-background"
                 aria-hidden
               />
             )}
@@ -681,7 +680,7 @@ export function BirdListPlaceholder() {
           <button
             type="button"
             onClick={() => setSortMode((mode) => (mode === 'distance' ? 'recent' : 'distance'))}
-            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-app-border-muted/70 bg-white px-3 font-kodchasan text-sm text-app-text hover:bg-app-background"
+            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-app-border-muted/70 bg-white px-3 font-kodchasan text-sm text-black hover:bg-app-background"
           >
             Sort: {sortMode === 'distance' ? 'Distance' : 'Recent'}
           </button>
@@ -694,7 +693,11 @@ export function BirdListPlaceholder() {
             <section className="min-h-0 overflow-y-auto rounded-2xl bg-white/45 p-4">
               {renderListContent('space-y-3')}
             </section>
-            <section className="min-h-0 overflow-hidden rounded-2xl">
+            <section
+              className="min-h-0 overflow-hidden rounded-2xl"
+              aria-label="Visual bird map (screen reader note)"
+              aria-description="This map is visual-only and hidden from screen readers. Use the bird list panel for all bird location details and selection."
+            >
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center rounded-2xl bg-white/70 p-4 text-center">
@@ -722,7 +725,12 @@ export function BirdListPlaceholder() {
         ) : null}
 
         {!isDesktop && (
-            <section ref={mobileSheetSectionRef} className="relative min-h-[50vh] flex-1 overflow-hidden">
+            <section
+              ref={mobileSheetSectionRef}
+              className="relative min-h-[50vh] flex-1 overflow-hidden"
+              aria-label="Visual bird map with list sheet (screen reader note)"
+              aria-description="The map is visual-only and hidden from screen readers. Use the bird list content in the bottom sheet for location details and bird selection."
+            >
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center bg-white/70 p-4 text-center">
@@ -749,7 +757,7 @@ export function BirdListPlaceholder() {
               </MapErrorBoundary>
 
               <div
-                className={`absolute inset-x-0 bottom-0 z-1000 bg-app-surface px-4 shadow-[0_-4px_12px_rgba(78,54,38,0.12)] transition-[height] duration-180 ease-out ${isFullyExpanded ? 'rounded-t-none' : 'rounded-t-3xl'} ${sheetMode === 'collapsed' ? 'pb-2 pt-2' : 'pb-4 pt-3'}`}
+                className={`absolute inset-x-0 bottom-0 z-1000 bg-app-surface px-4 shadow-[0_-4px_12px_rgba(78,54,38,0.12)] transition-[height] duration-180 ease-out ${isFullyExpanded ? 'rounded-t-none' : 'rounded-t-3xl'} ${sheetMode === 'collapsed' ? 'pb-0 pt-1.5' : 'pb-4 pt-3'}`}
                 style={{
                   height: `${effectiveSheetHeightPx}px`,
                   transitionDuration: isDraggingSheet ? '0ms' : '180ms',
@@ -760,7 +768,7 @@ export function BirdListPlaceholder() {
                   role="button"
                   tabIndex={0}
                   aria-label="Drag to expand or collapse bird list"
-                  className={`mx-auto flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing ${sheetMode === 'collapsed' ? 'mb-1 h-8 w-14' : 'mb-3 h-6 w-12'}`}
+                  className={`mx-auto flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing ${sheetMode === 'collapsed' ? 'mb-1 h-6 w-12' : 'mb-3 h-6 w-12'}`}
                   onPointerDown={handleSheetPointerDown}
                   onPointerMove={handleSheetPointerMove}
                   onPointerUp={handleSheetPointerUp}
@@ -786,8 +794,14 @@ export function BirdListPlaceholder() {
                     <div className="h-1.5 w-12 rounded-full bg-app-border-muted" />
                   )}
                 </div>
-                <div className={`flex items-center ${sheetMode === 'collapsed' ? 'mb-1 justify-center' : 'mb-3 justify-between'}`}>
-                  <p className="font-kodchasan text-sm font-bold text-app-text">
+                <div className={`flex items-center ${sheetMode === 'collapsed' ? 'mb-0 justify-center' : 'mb-3 justify-between'}`}>
+                  <p
+                    className={`font-kodchasan text-sm ${
+                      sheetMode === 'collapsed'
+                        ? 'font-medium text-app-text/80'
+                        : 'font-semibold text-app-text'
+                    }`}
+                  >
                     {visibleBirds.length >= 100 ? '100+' : visibleBirds.length} birds found in this area
                   </p>
                 </div>
