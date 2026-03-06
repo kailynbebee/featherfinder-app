@@ -18,6 +18,7 @@ const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search'
 const PHOTON_SEARCH_URL = 'https://photon.komoot.io/api/'
 const US_ZIP_QUERY_REGEX = /^\d{5}(?:-\d{4})?$/
 const PARTIAL_US_ZIP_QUERY_REGEX = /^\d{2,5}$/
+const COORDINATE_NUMBER_REGEX = /^[+-]?\d+(?:\.\d+)?$/
 
 type NominatimResult = {
   lat: string
@@ -67,6 +68,83 @@ function parseNominatimResults(payload: unknown): LocationSuggestion[] {
   })
 }
 
+function isValidLatitude(lat: number): boolean {
+  return Number.isFinite(lat) && lat >= -90 && lat <= 90
+}
+
+function isValidLongitude(lng: number): boolean {
+  return Number.isFinite(lng) && lng >= -180 && lng <= 180
+}
+
+function normalizeCoordinate(value: number): number {
+  return Number(value.toFixed(6))
+}
+
+type ParsedCoordinateQuery =
+  | { kind: 'none' }
+  | { kind: 'valid'; location: GeocodedLocation }
+  | { kind: 'invalid'; message: string }
+
+function parseCoordinateQuery(rawQuery: string): ParsedCoordinateQuery {
+  const query = rawQuery.trim()
+  if (!query) return { kind: 'none' }
+  const normalized = query.replace(/[()]/g, '').trim()
+  if (!normalized) return { kind: 'none' }
+
+  const parsePair = (latRaw: string, lngRaw: string): ParsedCoordinateQuery => {
+    if (!COORDINATE_NUMBER_REGEX.test(latRaw) || !COORDINATE_NUMBER_REGEX.test(lngRaw)) {
+      return {
+        kind: 'invalid',
+        message: 'Please enter coordinates as "lat, lng" (example: 19.4326, -99.1332).',
+      }
+    }
+    const lat = Number(latRaw)
+    const lng = Number(lngRaw)
+    if (!isValidLatitude(lat)) {
+      return { kind: 'invalid', message: 'Latitude must be between -90 and 90.' }
+    }
+    if (!isValidLongitude(lng)) {
+      return { kind: 'invalid', message: 'Longitude must be between -180 and 180.' }
+    }
+
+    const normalizedLat = normalizeCoordinate(lat)
+    const normalizedLng = normalizeCoordinate(lng)
+    return {
+      kind: 'valid',
+      location: {
+        lat: normalizedLat,
+        lng: normalizedLng,
+        label: `${normalizedLat}, ${normalizedLng}`,
+      },
+    }
+  }
+
+  const commaParts = normalized.split(',').map((part) => part.trim())
+  if (commaParts.length === 2) {
+    const [latRaw = '', lngRaw = ''] = commaParts
+    const maybeCoordinate =
+      /^[+-]?\d/.test(latRaw) ||
+      /^[+-]?\d/.test(lngRaw) ||
+      COORDINATE_NUMBER_REGEX.test(latRaw) ||
+      COORDINATE_NUMBER_REGEX.test(lngRaw)
+    if (!maybeCoordinate) return { kind: 'none' }
+    if (!latRaw || !lngRaw) {
+      return {
+        kind: 'invalid',
+        message: 'Please enter coordinates as "lat, lng" (example: 19.4326, -99.1332).',
+      }
+    }
+    return parsePair(latRaw, lngRaw)
+  }
+
+  const spaceParts = normalized.split(/\s+/).map((part) => part.trim()).filter(Boolean)
+  if (spaceParts.length === 2 && spaceParts.every((part) => COORDINATE_NUMBER_REGEX.test(part))) {
+    return parsePair(spaceParts[0]!, spaceParts[1]!)
+  }
+
+  return { kind: 'none' }
+}
+
 function buildNominatimUrl(query: string, limit: number, options?: SearchLocationSuggestionsOptions): string {
   const url = new URL(NOMINATIM_SEARCH_URL)
   url.searchParams.set('q', query)
@@ -74,9 +152,15 @@ function buildNominatimUrl(query: string, limit: number, options?: SearchLocatio
   url.searchParams.set('limit', String(limit))
   const countryHint = options?.countryHint?.trim().toLowerCase()
   const useUsByZip = US_ZIP_QUERY_REGEX.test(query) || PARTIAL_US_ZIP_QUERY_REGEX.test(query)
-  if (useUsByZip || countryHint === 'us') {
+  const isExplicitPlaceQuery = query.includes(',') || query.trim().split(/\s+/).length > 1
+  const applyCountryHint =
+    Boolean(countryHint) &&
+    /^[a-z]{2}$/.test(countryHint ?? '') &&
+    !isExplicitPlaceQuery &&
+    query.trim().length <= 4
+  if (useUsByZip) {
     url.searchParams.set('countrycodes', 'us')
-  } else if (countryHint && /^[a-z]{2}$/.test(countryHint)) {
+  } else if (applyCountryHint) {
     url.searchParams.set('countrycodes', countryHint)
   }
   if (options?.bias) {
@@ -155,6 +239,9 @@ export async function searchLocationSuggestions(
 ): Promise<LocationSuggestion[]> {
   const query = rawQuery.trim()
   if (query.length < 2) return []
+  const parsedCoordinate = parseCoordinateQuery(query)
+  if (parsedCoordinate.kind === 'valid') return [parsedCoordinate.location]
+  if (parsedCoordinate.kind === 'invalid') return []
 
   const clampedLimit = Math.max(1, Math.min(limit, 8))
   const url = new URL('/api/location/suggest', window.location.origin)
@@ -200,6 +287,13 @@ export async function geocodeLocation(rawQuery: string, countryHint?: string | n
   const query = rawQuery.trim()
   if (query.length < 2) {
     throw new Error('Please enter a more specific location.')
+  }
+  const parsedCoordinate = parseCoordinateQuery(query)
+  if (parsedCoordinate.kind === 'valid') {
+    return parsedCoordinate.location
+  }
+  if (parsedCoordinate.kind === 'invalid') {
+    throw new Error(parsedCoordinate.message)
   }
 
   const url = new URL('/api/location/geocode', window.location.origin)

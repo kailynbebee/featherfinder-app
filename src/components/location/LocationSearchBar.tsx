@@ -116,15 +116,42 @@ export function LocationSearchBar({
     window.setTimeout(() => search.setIsOpen(false), 120)
   }
 
+  const handleInputClick = () => {
+    setActiveRecentIndex(-1)
+    search.setIsOpen(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await search.handleSubmit()
   }
 
-  const showRecent = search.query.trim().length < 2 && recentLocations.length > 0
+  const defaultResultsQuery =
+    mode === 'results' && location
+      ? (location.source === 'geo' ? 'Nearby' : location.label).trim()
+      : ''
+  const isPrefilledResultsFocus =
+    mode === 'results' &&
+    isFocused &&
+    defaultResultsQuery.length > 0 &&
+    search.query.trim() === defaultResultsQuery
+  const showRecent =
+    recentLocations.length > 0 &&
+    (search.query.trim().length < 2 || isPrefilledResultsFocus)
+  const showSuggestionOptions =
+    search.suggestions.length > 0 &&
+    !isPrefilledResultsFocus
+  const showLoadingState =
+    search.isLoading &&
+    !showRecent &&
+    !isPrefilledResultsFocus
   const showDropdown =
     search.isOpen &&
-    (showRecent || search.isLoading || search.suggestions.length > 0)
+    (showRecent || showLoadingState || showSuggestionOptions)
+  const dropdownPositionClass =
+    mode === 'results'
+      ? 'top-[calc(100%+8px)]'
+      : 'bottom-[calc(100%+8px)]'
   const resultsPlaceholder = 'Search birds, locations, or hotspots'
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -147,11 +174,11 @@ export function LocationSearchBar({
         e.preventDefault()
         const recent = recentLocations[activeRecentIndex]
         if (recent) {
-          wrappedOnCommit(
-            { label: recent.label, lat: recent.lat, lng: recent.lng },
-            recent.label
-          )
-          search.setIsOpen(false)
+          search.selectSuggestion({
+            label: recent.label,
+            lat: recent.lat,
+            lng: recent.lng,
+          })
           setActiveRecentIndex(-1)
         }
         return
@@ -168,11 +195,11 @@ export function LocationSearchBar({
   }
 
   const selectRecent = (recent: { label: string; lat: number; lng: number }) => {
-    wrappedOnCommit(
-      { label: recent.label, lat: recent.lat, lng: recent.lng },
-      recent.label
-    )
-    search.setIsOpen(false)
+    search.selectSuggestion({
+      label: recent.label,
+      lat: recent.lat,
+      lng: recent.lng,
+    })
     setActiveRecentIndex(-1)
   }
 
@@ -186,8 +213,8 @@ export function LocationSearchBar({
   return (
     <form onSubmit={handleSubmit} className={`relative w-full ${className}`}>
       {showDropdown && (
-        <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 overflow-hidden rounded-xl border border-app-border-muted/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]">
-          {showRecent && search.suggestions.length === 0 && (
+        <div className={`absolute inset-x-0 ${dropdownPositionClass} z-1210 overflow-hidden rounded-xl border border-app-border-muted/60 bg-white shadow-[0_8px_20px_rgba(74,55,40,0.16)]`}>
+          {showRecent && (
             <>
               <p className="px-4 py-2 font-kodchasan text-xs font-medium text-app-text/70">
                 Recent searches
@@ -220,10 +247,10 @@ export function LocationSearchBar({
               </ul>
             </>
           )}
-          {search.isLoading && !showRecent && (
+          {showLoadingState && (
             <p className="px-4 py-2 text-sm text-app-text/70">Searching locations...</p>
           )}
-          {search.suggestions.length > 0 && (
+          {showSuggestionOptions && (
             <ul
               id={listboxId}
               role="listbox"
@@ -287,6 +314,7 @@ export function LocationSearchBar({
           onChange={(e) => search.handleInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
+          onClick={handleInputClick}
           onBlur={handleBlur}
           placeholder={mode === 'results' && !location ? resultsPlaceholder : placeholder}
           className={`min-w-0 flex-1 bg-transparent font-kodchasan text-app-text outline-none placeholder:text-app-text/60 ${mode === 'results' ? 'text-sm' : 'text-[19px]'}`}

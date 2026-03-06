@@ -110,9 +110,14 @@ export async function searchNominatim(args: SearchArgs): Promise<LocationSuggest
   const sanitizedCountry = sanitizeCountryCode(countryHint)
   const useUsByNumeric = US_ZIP_QUERY_REGEX.test(query) || PARTIAL_US_ZIP_QUERY_REGEX.test(query)
   const useUsByContext = query.length <= SHORT_QUERY_LENGTH && (sanitizedCountry === 'us' || hasLikelyUsBias(bias))
+  const isExplicitPlaceQuery = query.includes(',') || query.trim().split(/\s+/).length > 1
+  const applyCountryHint =
+    Boolean(sanitizedCountry) &&
+    !isExplicitPlaceQuery &&
+    query.trim().length <= 4
   if (useUsByNumeric || useUsByContext) {
     url.searchParams.set('countrycodes', 'us')
-  } else if (sanitizedCountry) {
+  } else if (applyCountryHint && sanitizedCountry) {
     url.searchParams.set('countrycodes', sanitizedCountry)
   }
 

@@ -6,6 +6,17 @@ const PARAM_Q = 'q'
 const PARAM_LAT = 'lat'
 const PARAM_LNG = 'lng'
 
+function isValidLatLng(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 export function useLocationFromUrl(): LocationValue | null {
   const { pathname, search } = useLocation()
 
@@ -19,6 +30,7 @@ export function useLocationFromUrl(): LocationValue | null {
     const lat = parseFloat(latParam)
     const lng = parseFloat(lngParam)
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    if (!isValidLatLng(lat, lng)) return null
     return {
       source: 'query',
       query: q,

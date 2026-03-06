@@ -18,11 +18,11 @@ type SheetMode = 'collapsed' | 'half' | 'expanded'
 type DistanceFilter = '10' | '25'
 type SortMode = 'distance' | 'recent'
 
-const SHEET_HEIGHT_CLASS: Record<SheetMode, string> = {
-  collapsed: 'h-26',
-  half: 'h-[60%]',
-  expanded: 'h-[75%]',
+const SHEET_HEIGHT_RATIO: Record<Exclude<SheetMode, 'collapsed'>, number> = {
+  half: 0.6,
+  expanded: 1,
 }
+const COLLAPSED_SHEET_HEIGHT_PX = 104
 
 const SHEET_MODE_ORDER: SheetMode[] = ['collapsed', 'half', 'expanded']
 
@@ -34,6 +34,25 @@ function getNextSheetMode(mode: SheetMode): SheetMode {
 function getPrevSheetMode(mode: SheetMode): SheetMode {
   const i = SHEET_MODE_ORDER.indexOf(mode)
   return SHEET_MODE_ORDER[Math.max(i - 1, 0)]
+}
+
+function getSheetHeightPx(mode: SheetMode, containerHeight: number): number {
+  if (mode === 'collapsed') return COLLAPSED_SHEET_HEIGHT_PX
+  return Math.round(containerHeight * SHEET_HEIGHT_RATIO[mode])
+}
+
+function getNearestSheetMode(heightPx: number, containerHeight: number): SheetMode {
+  const candidates: SheetMode[] = ['collapsed', 'half', 'expanded']
+  let bestMode: SheetMode = 'half'
+  let bestDistance = Number.POSITIVE_INFINITY
+  for (const mode of candidates) {
+    const distance = Math.abs(getSheetHeightPx(mode, containerHeight) - heightPx)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      bestMode = mode
+    }
+  }
+  return bestMode
 }
 
 class MapErrorBoundary extends Component<
@@ -190,44 +209,175 @@ export function BirdListPlaceholder() {
   const [selectedBirdId, setSelectedBirdId] = useState<string | null>(null)
   const [quickViewBird, setQuickViewBird] = useState<NearbyBird | null>(null)
   const [showFilterFade, setShowFilterFade] = useState(false)
+  const [isDraggingSheet, setIsDraggingSheet] = useState(false)
+  const [dragPreviewHeightPx, setDragPreviewHeightPx] = useState<number | null>(null)
+  const [sheetContainerHeightPx, setSheetContainerHeightPx] = useState(() =>
+    typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.6) : 480
+  )
   const filterScrollRef = useRef<HTMLDivElement>(null)
+  const mobileSheetSectionRef = useRef<HTMLElement | null>(null)
   const isDesktop = useIsDesktop()
-  const sheetDragRef = useRef({ startY: 0, startMode: 'half' as SheetMode })
+  const sheetDragRef = useRef({
+    pointerId: -1,
+    startY: 0,
+    startHeightPx: 0,
+    hasMoved: false,
+  })
+  const suppressNextSheetClickRef = useRef(false)
+  const sheetContainerHeight = Math.max(COLLAPSED_SHEET_HEIGHT_PX + 80, sheetContainerHeightPx)
+  const minSheetHeightPx = getSheetHeightPx('collapsed', sheetContainerHeight)
+  const maxSheetHeightPx = getSheetHeightPx('expanded', sheetContainerHeight)
+  const effectiveSheetHeightPx =
+    dragPreviewHeightPx ?? getSheetHeightPx(sheetMode, sheetContainerHeight)
+  const isFullyExpanded = effectiveSheetHeightPx >= maxSheetHeightPx - 1
 
   const handleSheetPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      sheetDragRef.current = { startY: e.clientY, startMode: sheetMode }
+      sheetDragRef.current = {
+        pointerId: e.pointerId,
+        startY: e.clientY,
+        startHeightPx: getSheetHeightPx(sheetMode, sheetContainerHeight),
+        hasMoved: false,
+      }
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      setIsDraggingSheet(true)
+      setDragPreviewHeightPx(getSheetHeightPx(sheetMode, sheetContainerHeight))
     },
-    [sheetMode]
+    [sheetMode, sheetContainerHeight]
+  )
+
+  const handleSheetPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDraggingSheet || sheetDragRef.current.pointerId !== e.pointerId) return
+      const deltaY = sheetDragRef.current.startY - e.clientY
+      if (Math.abs(deltaY) > 3) {
+        sheetDragRef.current.hasMoved = true
+      }
+      const nextHeight = Math.round(
+        Math.max(
+          minSheetHeightPx,
+          Math.min(maxSheetHeightPx, sheetDragRef.current.startHeightPx + deltaY)
+        )
+      )
+      setDragPreviewHeightPx(nextHeight)
+    },
+    [isDraggingSheet, minSheetHeightPx, maxSheetHeightPx]
   )
 
   const handleSheetPointerUp = useCallback(
     (e: React.PointerEvent) => {
       const el = e.target as HTMLElement
       el.releasePointerCapture?.(e.pointerId)
+      if (sheetDragRef.current.pointerId !== e.pointerId) return
       const deltaY = sheetDragRef.current.startY - e.clientY
-      const threshold = 40
-      if (deltaY > threshold) {
-        setSheetMode(getNextSheetMode(sheetDragRef.current.startMode))
-      } else if (deltaY < -threshold) {
-        setSheetMode(getPrevSheetMode(sheetDragRef.current.startMode))
-      }
+      const projectedHeight =
+        dragPreviewHeightPx ??
+        Math.round(
+          Math.max(
+            minSheetHeightPx,
+            Math.min(maxSheetHeightPx, sheetDragRef.current.startHeightPx + deltaY)
+          )
+        )
+      setSheetMode(getNearestSheetMode(projectedHeight, sheetContainerHeight))
+      suppressNextSheetClickRef.current = sheetDragRef.current.hasMoved
+      sheetDragRef.current.pointerId = -1
+      sheetDragRef.current.hasMoved = false
+      setIsDraggingSheet(false)
+      setDragPreviewHeightPx(null)
+    },
+    [dragPreviewHeightPx, minSheetHeightPx, maxSheetHeightPx, sheetContainerHeight]
+  )
+
+  const handleSheetPointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      const el = e.target as HTMLElement
+      el.releasePointerCapture?.(e.pointerId)
+      if (sheetDragRef.current.pointerId !== e.pointerId) return
+      sheetDragRef.current.pointerId = -1
+      sheetDragRef.current.hasMoved = false
+      setIsDraggingSheet(false)
+      setDragPreviewHeightPx(null)
     },
     []
   )
+
+  useEffect(() => {
+    if (isDesktop) return
+    const section = mobileSheetSectionRef.current
+    if (!section) return
+
+    const syncHeight = () => {
+      const nextHeight = section.clientHeight
+      if (nextHeight > 0) setSheetContainerHeightPx(nextHeight)
+    }
+    syncHeight()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(syncHeight)
+      ro.observe(section)
+      return () => ro.disconnect()
+    }
+
+    window.addEventListener('resize', syncHeight)
+    return () => window.removeEventListener('resize', syncHeight)
+  }, [isDesktop])
+
+  useEffect(() => {
+    if (isDesktop) {
+      setIsDraggingSheet(false)
+      setDragPreviewHeightPx(null)
+      sheetDragRef.current.pointerId = -1
+      sheetDragRef.current.hasMoved = false
+      return
+    }
+    setDragPreviewHeightPx((current) => {
+      if (current == null) return current
+      return Math.max(minSheetHeightPx, Math.min(maxSheetHeightPx, current))
+    })
+  }, [isDesktop, minSheetHeightPx, maxSheetHeightPx])
+
+  const handleSetSheetMode = useCallback((nextMode: SheetMode) => {
+    setSheetMode(nextMode)
+    setDragPreviewHeightPx(null)
+    setIsDraggingSheet(false)
+    sheetDragRef.current.pointerId = -1
+  }, [])
+
+  const handleCollapsedSheetClick = useCallback(() => {
+    if (suppressNextSheetClickRef.current) {
+      suppressNextSheetClickRef.current = false
+      return
+    }
+    if (isDraggingSheet) return
+    if (sheetMode !== 'collapsed') return
+    handleSetSheetMode('half')
+  }, [isDraggingSheet, sheetMode, handleSetSheetMode])
+
+  const handleSheetToggleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (suppressNextSheetClickRef.current) {
+      suppressNextSheetClickRef.current = false
+      return
+    }
+    if (isDraggingSheet) return
+    if (sheetMode === 'collapsed') {
+      handleSetSheetMode('half')
+      return
+    }
+    handleSetSheetMode('collapsed')
+  }, [isDraggingSheet, sheetMode, handleSetSheetMode])
 
   const handleSheetKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === ' ') {
         e.preventDefault()
-        setSheetMode((m) => getNextSheetMode(m))
+        handleSetSheetMode(getNextSheetMode(sheetMode))
       } else if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSheetMode((m) => getPrevSheetMode(m))
+        handleSetSheetMode(getPrevSheetMode(sheetMode))
       }
     },
-    []
+    [handleSetSheetMode, sheetMode]
   )
 
   const updateFilterFade = useCallback(() => {
@@ -277,6 +427,8 @@ export function BirdListPlaceholder() {
     if (!location) return
 
     let cancelled = false
+    setBirds([])
+    setSelectedBirdId(null)
 
     const loadBirds = async () => {
       setIsLoading(true)
@@ -570,7 +722,7 @@ export function BirdListPlaceholder() {
         ) : null}
 
         {!isDesktop && (
-            <section className="relative min-h-[50vh] flex-1 overflow-hidden">
+            <section ref={mobileSheetSectionRef} className="relative min-h-[50vh] flex-1 overflow-hidden">
               <MapErrorBoundary
                 fallback={(
                   <div className="flex h-full items-center justify-center bg-white/70 p-4 text-center">
@@ -596,16 +748,25 @@ export function BirdListPlaceholder() {
                 />
               </MapErrorBoundary>
 
-              <div className={`absolute inset-x-0 bottom-0 z-1000 rounded-t-3xl bg-app-surface px-4 shadow-[0_-4px_12px_rgba(78,54,38,0.12)] ${sheetMode === 'collapsed' ? 'pb-2 pt-2' : 'pb-4 pt-3'} ${SHEET_HEIGHT_CLASS[sheetMode]}`}>
+              <div
+                className={`absolute inset-x-0 bottom-0 z-1000 bg-app-surface px-4 shadow-[0_-4px_12px_rgba(78,54,38,0.12)] transition-[height] duration-180 ease-out ${isFullyExpanded ? 'rounded-t-none' : 'rounded-t-3xl'} ${sheetMode === 'collapsed' ? 'pb-2 pt-2' : 'pb-4 pt-3'}`}
+                style={{
+                  height: `${effectiveSheetHeightPx}px`,
+                  transitionDuration: isDraggingSheet ? '0ms' : '180ms',
+                }}
+                onClick={handleCollapsedSheetClick}
+              >
                 <div
                   role="button"
                   tabIndex={0}
                   aria-label="Drag to expand or collapse bird list"
                   className={`mx-auto flex cursor-grab touch-none select-none items-center justify-center active:cursor-grabbing ${sheetMode === 'collapsed' ? 'mb-1 h-8 w-14' : 'mb-3 h-6 w-12'}`}
                   onPointerDown={handleSheetPointerDown}
+                  onPointerMove={handleSheetPointerMove}
                   onPointerUp={handleSheetPointerUp}
-                  onPointerCancel={handleSheetPointerUp}
+                  onPointerCancel={handleSheetPointerCancel}
                   onKeyDown={handleSheetKeyDown}
+                  onClick={handleSheetToggleClick}
                 >
                   {sheetMode === 'collapsed' ? (
                     <svg

@@ -19,59 +19,59 @@ type BirdMapProps = {
   className?: string
 }
 
+function isValidLatLng(point: { lat: number; lng: number } | undefined): point is { lat: number; lng: number } {
+  if (!point) return false
+  return (
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng) &&
+    point.lat >= -90 &&
+    point.lat <= 90 &&
+    point.lng >= -180 &&
+    point.lng <= 180
+  )
+}
+
 function ClusterBoundsSync({
   birds,
   fallbackCenter,
   fallbackRadiusMiles,
+  searchCenter,
+  searchRadiusMiles,
   bottomPaddingPx,
 }: {
   birds: NearbyBird[]
   fallbackCenter: { lat: number; lng: number }
   fallbackRadiusMiles: number
+  searchCenter?: { lat: number; lng: number }
+  searchRadiusMiles?: number
   bottomPaddingPx: number
 }) {
   const map = useMap()
 
   useEffect(() => {
-    if (birds.length >= 2) {
-      const bounds = L.latLngBounds(
-        birds.map((bird) => [bird.lat, bird.lng] as [number, number])
-      )
-      map.fitBounds(bounds, {
-        paddingTopLeft: [24, 24],
-        paddingBottomRight: [24, bottomPaddingPx],
-        maxZoom: 13,
-        animate: true,
-        duration: 0.35,
-      })
-      return
-    }
-
-    if (birds.length === 1) {
-      map.setView(
-        [birds[0]!.lat, birds[0]!.lng],
-        fallbackRadiusMiles <= 10 ? 12 : 11,
-        { animate: true }
-      )
-      return
-    }
-
-    const latDelta = fallbackRadiusMiles / 69
-    const cosLat = Math.max(0.2, Math.cos((fallbackCenter.lat * Math.PI) / 180))
-    const lngDelta = fallbackRadiusMiles / (69 * cosLat)
-    map.fitBounds(
+    const framingCenter = isValidLatLng(searchCenter) ? searchCenter : fallbackCenter
+    const framingRadiusMiles =
+      typeof searchRadiusMiles === 'number' && searchRadiusMiles > 0
+        ? searchRadiusMiles
+        : fallbackRadiusMiles
+    const latDelta = framingRadiusMiles / 69
+    const cosLat = Math.max(0.2, Math.cos((framingCenter.lat * Math.PI) / 180))
+    const lngDelta = framingRadiusMiles / (69 * cosLat)
+    const bounds = L.latLngBounds(
       [
-        [fallbackCenter.lat - latDelta, fallbackCenter.lng - lngDelta],
-        [fallbackCenter.lat + latDelta, fallbackCenter.lng + lngDelta],
-      ],
-      {
-        paddingTopLeft: [24, 24],
-        paddingBottomRight: [24, bottomPaddingPx],
-        animate: true,
-        duration: 0.35,
-      }
+        [framingCenter.lat - latDelta, framingCenter.lng - lngDelta],
+        [framingCenter.lat + latDelta, framingCenter.lng + lngDelta],
+      ] as [number, number][]
     )
-  }, [map, birds, fallbackCenter.lat, fallbackCenter.lng, fallbackRadiusMiles, bottomPaddingPx])
+    birds.forEach((bird) => bounds.extend([bird.lat, bird.lng]))
+    map.fitBounds(bounds, {
+      paddingTopLeft: [24, 24],
+      paddingBottomRight: [24, bottomPaddingPx],
+      maxZoom: 13,
+      animate: true,
+      duration: 0.35,
+    })
+  }, [map, birds, fallbackCenter.lat, fallbackCenter.lng, fallbackRadiusMiles, searchCenter, searchRadiusMiles, bottomPaddingPx])
 
   return null
 }
@@ -162,12 +162,13 @@ export function BirdMap({
   const [places, setPlaces] = useState<BirdingPlace[]>([])
 
   const center = useMemo(() => {
-    if (locationCenter) return locationCenter
-    if (birds.length === 0) return { lat: 20, lng: 0 }
+    if (isValidLatLng(locationCenter)) return locationCenter
+    if (isValidLatLng(searchCenter)) return searchCenter
+    if (birds.length === 0) return { lat: 39.5, lng: -98.35 }
     const lat = birds.reduce((sum, bird) => sum + bird.lat, 0) / birds.length
     const lng = birds.reduce((sum, bird) => sum + bird.lng, 0) / birds.length
     return { lat, lng }
-  }, [locationCenter, birds])
+  }, [locationCenter, searchCenter, birds])
 
   useEffect(() => {
     if (import.meta.env.MODE === 'test') {
@@ -232,6 +233,8 @@ export function BirdMap({
         birds={birds}
         fallbackCenter={center}
         fallbackRadiusMiles={landmarkDistanceMiles}
+        searchCenter={searchCenter}
+        searchRadiusMiles={searchRadiusMiles}
         bottomPaddingPx={fitBoundsBottomPaddingPx}
       />
       <SelectedBirdSync birds={birds} selectedBirdId={selectedBirdId} isPaused={pauseSelectionFlyTo} />

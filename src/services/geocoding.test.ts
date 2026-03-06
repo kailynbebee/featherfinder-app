@@ -28,6 +28,15 @@ describe('searchLocationSuggestions', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('returns a direct suggestion for valid coordinate input', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    const results = await searchLocationSuggestions('19.4326, -99.1332', 5, { countryHint: 'us' })
+    expect(results).toEqual([
+      { lat: 19.4326, lng: -99.1332, label: '19.4326, -99.1332' },
+    ])
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('passes bias and country to backend', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -57,6 +66,27 @@ describe('searchLocationSuggestions', () => {
     const results = await searchLocationSuggestions('portland', 5, { countryHint: 'us' })
     expect(results[0]?.label).toContain('Portland, Oregon')
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not force US filter for explicit multi-region query text', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ suggestions: [] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ features: [] }),
+      } as Response)
+
+    await searchLocationSuggestions('Mexico City, Mexico', 5, { countryHint: 'us' })
+    const nominatimUrl = String(fetchMock.mock.calls[1]?.[0] ?? '')
+    expect(nominatimUrl).toContain('nominatim.openstreetmap.org/search')
+    expect(nominatimUrl).not.toContain('countrycodes=us')
   })
 })
 
@@ -95,5 +125,21 @@ describe('geocodeLocation', () => {
 
   it('throws validation error for short query', async () => {
     await expect(geocodeLocation('a')).rejects.toThrow('Please enter a more specific location.')
+  })
+
+  it('accepts coordinate input directly', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    await expect(geocodeLocation('19.4326, -99.1332')).resolves.toEqual({
+      lat: 19.4326,
+      lng: -99.1332,
+      label: '19.4326, -99.1332',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('throws range validation for invalid coordinates', async () => {
+    await expect(geocodeLocation('190.4, -99.1')).rejects.toThrow(
+      'Latitude must be between -90 and 90.'
+    )
   })
 })
