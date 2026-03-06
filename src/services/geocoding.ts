@@ -264,10 +264,7 @@ export async function searchLocationSuggestions(
     }
     const data = await response.json() as { suggestions?: LocationSuggestion[] }
     const suggestions = Array.isArray(data.suggestions) ? data.suggestions : []
-    if (suggestions.length > 0) return suggestions
-    const fromNominatim = await searchDirectNominatim(query, clampedLimit, options, signal)
-    if (fromNominatim.length > 0) return fromNominatim
-    return await searchPhoton(query, clampedLimit, options, signal)
+    return suggestions
   } catch {
     try {
       const fromNominatim = await searchDirectNominatim(query, clampedLimit, options, signal)

@@ -4,6 +4,7 @@ import { trackEvent } from '@/observability/telemetry'
 
 const SUGGESTION_BIAS_STORAGE_KEY = 'ff:suggestion-bias'
 const BIAS_TTL_MS = 12 * 60 * 60 * 1000
+const SUGGESTION_DEBOUNCE_MS = 125
 
 type StoredBias = {
   lat: number
@@ -172,7 +173,7 @@ export function useLocationSearchController(args: UseLocationSearchControllerArg
         count: nextSuggestions.length,
         durationMs: Math.round(performance.now() - startedAt),
       })
-    }, 250)
+    }, SUGGESTION_DEBOUNCE_MS)
 
     return () => {
       controller.abort()
@@ -184,6 +185,16 @@ export function useLocationSearchController(args: UseLocationSearchControllerArg
     setQuery(value)
     setSelectedSuggestion(null)
     setError(null)
+    setIsOpen(true)
+  }
+
+  const clearInput = () => {
+    setQuery('')
+    setSelectedSuggestion(null)
+    setError(null)
+    setSuggestions([])
+    setIsLoading(false)
+    setActiveIndex(-1)
     setIsOpen(true)
   }
 
@@ -273,6 +284,7 @@ export function useLocationSearchController(args: UseLocationSearchControllerArg
     setIsOpen,
     setActiveIndex,
     handleInputChange,
+    clearInput,
     handleSubmit,
     handleKeyDown,
     selectSuggestion,

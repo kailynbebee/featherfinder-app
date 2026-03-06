@@ -50,29 +50,24 @@ describe('searchLocationSuggestions', () => {
     expect(url).toContain('lat=45.5')
   })
 
-  it('falls back to direct nominatim when backend returns empty list', async () => {
+  it('returns backend empty list without extra provider calls', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ suggestions: [] }),
       } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          { lat: '45.52', lon: '-122.67', display_name: 'Portland, Oregon, United States' },
-        ],
-      } as Response)
 
     const results = await searchLocationSuggestions('portland', 5, { countryHint: 'us' })
-    expect(results[0]?.label).toContain('Portland, Oregon')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(results).toEqual([])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not force US filter for explicit multi-region query text', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ suggestions: [] }),
+        ok: false,
+        status: 502,
+        json: async () => ({}),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,

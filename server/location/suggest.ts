@@ -5,6 +5,8 @@ import { rankSuggestions } from './ranking'
 import type { LocationSuggestion, SuggestRequest, SuggestionBias } from './types'
 
 const SUGGEST_CACHE = new TTLCache<LocationSuggestion[]>(3 * 60 * 1000)
+const inFlightSuggestionRequests = new Map<string, Promise<LocationSuggestion[]>>()
+const SECOND_SOURCE_GRACE_MS = 120
 
 function parseBias(latRaw: string | null, lngRaw: string | null): SuggestionBias | null {
   if (!latRaw || !lngRaw) return null
@@ -39,21 +41,49 @@ export async function getSuggestions(request: SuggestRequest): Promise<LocationS
   const cacheKey = makeSuggestCacheKey(request)
   const cached = SUGGEST_CACHE.get(cacheKey)
   if (cached) return cached
+  const existingRequest = inFlightSuggestionRequests.get(cacheKey)
+  if (existingRequest) return existingRequest
 
-  const fetchLimit = Math.max(request.limit * 4, 20)
-  let candidates = await searchNominatim({
-    query: request.query,
-    limit: fetchLimit,
-    countryHint: request.countryHint,
-    bias: request.bias,
-  })
-  if (candidates.length === 0) {
-    candidates = await searchPhoton(request.query, fetchLimit, request.bias)
+  const suggestionRequest = (async () => {
+    const fetchLimit = Math.min(12, request.limit * 2 + 2)
+    const nominatimRequest = searchNominatim({
+      query: request.query,
+      limit: fetchLimit,
+      countryHint: request.countryHint,
+      bias: request.bias,
+    }).then((values) => ({ source: 'nominatim' as const, values }))
+    const photonRequest = searchPhoton(request.query, fetchLimit, request.bias)
+      .then((values) => ({ source: 'photon' as const, values }))
+
+    const firstFinished = await Promise.race([nominatimRequest, photonRequest])
+    const otherRequest =
+      firstFinished.source === 'nominatim' ? photonRequest : nominatimRequest
+    let candidates = firstFinished.values
+    if (candidates.length === 0) {
+      candidates = (await otherRequest).values
+    } else {
+      // Keep p95 latency low: merge second provider only if it returns almost immediately.
+      const secondFinishedOrTimeout = await Promise.race([
+        otherRequest,
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), SECOND_SOURCE_GRACE_MS)
+        }),
+      ])
+      if (secondFinishedOrTimeout?.values?.length) {
+        candidates = [...candidates, ...secondFinishedOrTimeout.values]
+      }
+    }
+
+    const ranked = rankSuggestions(candidates, request.query, request.bias).slice(0, request.limit)
+    if (ranked.length > 0) SUGGEST_CACHE.set(cacheKey, ranked)
+    return ranked
+  })()
+  inFlightSuggestionRequests.set(cacheKey, suggestionRequest)
+  try {
+    return await suggestionRequest
+  } finally {
+    inFlightSuggestionRequests.delete(cacheKey)
   }
-
-  const ranked = rankSuggestions(candidates, request.query, request.bias).slice(0, request.limit)
-  if (ranked.length > 0) SUGGEST_CACHE.set(cacheKey, ranked)
-  return ranked
 }
 
 export async function geocodeOne(query: string, countryHint?: string | null): Promise<LocationSuggestion | null> {

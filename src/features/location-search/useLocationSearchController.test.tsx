@@ -82,4 +82,24 @@ describe('useLocationSearchController', () => {
     expect(mockGeocode).toHaveBeenCalled()
     expect(mockCommit).toHaveBeenCalledTimes(1)
   })
+
+  it('clears current query and suggestions', async () => {
+    const { result } = renderHook(() => useLocationSearchController({ onCommitLocation: mockCommit }))
+    act(() => {
+      result.current.handleInputChange('port')
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(260)
+      await Promise.resolve()
+    })
+
+    expect(result.current.suggestions).toHaveLength(1)
+    act(() => {
+      result.current.clearInput()
+    })
+    expect(result.current.query).toBe('')
+    expect(result.current.suggestions).toEqual([])
+    expect(result.current.activeIndex).toBe(-1)
+  })
 })

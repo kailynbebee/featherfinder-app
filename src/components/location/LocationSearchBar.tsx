@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useLocation } from '@/context/LocationContext'
 import { useLocationSearchController } from '@/features/location-search/useLocationSearchController'
 import { useRecentLocations } from '@/features/location-search/useRecentLocations'
@@ -10,6 +10,15 @@ function SearchIcon() {
     <svg className="size-full" fill="none" viewBox="0 0 24 24" stroke={palette.accentSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 17L21 21" />
       <circle cx="11" cy="11" r="8" />
+    </svg>
+  )
+}
+
+function ClearIcon() {
+  return (
+    <svg className="size-full" fill="none" viewBox="0 0 24 24" stroke={palette.accentSecondary} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   )
 }
@@ -83,6 +92,8 @@ export function LocationSearchBar({
   const { location } = useLocation()
   const [isFocused, setIsFocused] = useState(false)
   const [activeRecentIndex, setActiveRecentIndex] = useState(-1)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const skipResultsPrefillOnNextFocusRef = useRef(false)
   const { recentLocations, addRecentLocation } = useRecentLocations()
 
   const wrappedOnCommit = useCallback(
@@ -105,7 +116,9 @@ export function LocationSearchBar({
   const handleFocus = () => {
     setIsFocused(true)
     setActiveRecentIndex(-1)
-    if (mode === 'results' && location) {
+    if (skipResultsPrefillOnNextFocusRef.current) {
+      skipResultsPrefillOnNextFocusRef.current = false
+    } else if (mode === 'results' && location) {
       search.handleInputChange(location.source === 'geo' ? 'Nearby' : location.label)
     }
     search.setIsOpen(true)
@@ -153,6 +166,18 @@ export function LocationSearchBar({
       ? 'top-[calc(100%+8px)]'
       : 'bottom-[calc(100%+8px)]'
   const resultsPlaceholder = 'Search birds, locations, or hotspots'
+  const showClearButton =
+    displayValue.trim().length > 0 &&
+    !disabled &&
+    !search.isSubmitting
+
+  const handleClearClick = () => {
+    skipResultsPrefillOnNextFocusRef.current = true
+    search.clearInput()
+    setIsFocused(true)
+    setActiveRecentIndex(-1)
+    inputRef.current?.focus()
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (showRecent && search.suggestions.length === 0) {
@@ -304,6 +329,7 @@ export function LocationSearchBar({
         }
       >
         <input
+          ref={inputRef}
           type="text"
           role="combobox"
           aria-autocomplete="list"
@@ -321,6 +347,18 @@ export function LocationSearchBar({
           aria-label="Location search"
           disabled={disabled || search.isSubmitting}
         />
+        {showClearButton && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleClearClick}
+            className={`shrink-0 cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50 ${mode === 'results' && compact ? 'size-4' : mode === 'results' ? 'size-5' : 'size-6'}`}
+            aria-label="Clear location input"
+            disabled={disabled || search.isSubmitting}
+          >
+            <ClearIcon />
+          </button>
+        )}
         <button
           type="submit"
           className={`shrink-0 cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50 ${mode === 'results' && compact ? 'size-4' : mode === 'results' ? 'size-5' : 'size-6'}`}
