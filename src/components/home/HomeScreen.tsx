@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLocation } from '@/context/LocationContext'
 import { buildBirdsUrl } from '@/context/useLocationFromUrl'
 import { GEOLOCATION_TIMEOUT_MS, useGeolocation } from '@/hooks/useGeolocation'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
+import { PhotoHeroCarousel } from '@/components/home/PhotoHeroCarousel'
 import { LocationSearchBar } from '@/components/location/LocationSearchBar'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { palette } from '@/theme/palette'
@@ -21,6 +22,8 @@ export function HomeScreen() {
   const navigate = useNavigate()
   const { setQueryLocation, setGeoLocation } = useLocation()
   const { status: geoStatus, coords, error: geoError, requestLocation, cancelLocationRequest } = useGeolocation()
+  const cancelLocationRequestRef = useRef(cancelLocationRequest)
+  cancelLocationRequestRef.current = cancelLocationRequest
 
   const isGeoLoading = geoStatus === 'loading'
   const isGeoSuccess = geoStatus === 'success'
@@ -138,78 +141,66 @@ export function HomeScreen() {
         </div>
       </AppHeader>
 
-      {/* Main content - flat, solid (Khroma-style) */}
-      <main className="flex flex-1 flex-col items-center justify-start gap-4 bg-app-background px-5 pb-8 pt-14">
-        {/* Bird name placeholder (static for simplified hero) */}
-        <p className="font-kodchasan text-[14px] font-medium text-app-text">
-          Tropical Royal Flycatcher
-        </p>
-
-        {/* Carousel indicator placeholder (static dots) */}
-        <div className="flex items-center gap-2.25">
-          <div className="h-1.75 w-10.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.8)]">
-            <div className="h-1.75 w-1/4 rounded-bl-lg rounded-tl-lg bg-app-border-muted" />
-          </div>
-          <div className="h-1.75 w-2.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.5)]" />
-          <div className="h-1.75 w-2.5 shrink-0 rounded-lg bg-[rgba(200,178,146,0.5)]" />
-        </div>
-
-        {/* Location search */}
-        <div className="w-full max-w-200">
-          <LocationSearchBar
-            mode="home"
-            onCommitLocation={(location, query) => {
-              setQueryLocation(query, location.lat, location.lng, location.label)
-              navigateWithTransition(buildBirdsUrl({ source: 'query', query, lat: location.lat, lng: location.lng, label: location.label }))
-            }}
-            disabled={isGeoLoading}
-          />
-        </div>
-
-        {/* Discover nearby CTA */}
-        <div className="flex w-full max-w-200 flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={handleDiscoverNearby}
-            disabled={isGeoLoading}
-            className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-app-accent underline transition-opacity hover:opacity-80 disabled:opacity-50 ${isGeoLoading ? 'no-underline' : 'underline'}`}
-          >
-            {isGeoLoading && (
-              <span className="size-5 animate-spin rounded-full border-2 border-app-accent-secondary border-t-transparent" aria-hidden />
-            )}
-            {isGeoLoading ? 'Finding your location...' : 'Discover Wingspan birds near you'}
-          </button>
-          {isGeoLoading && (
+      <section className="relative h-[calc(100svh-3.5rem)] min-h-0 sm:h-[calc(100vh-3.5rem)]">
+        <PhotoHeroCarousel
+          overlay={
             <>
-              <p className="text-center text-sm text-app-text/80">
-                Look for the location prompt in your browser. If you don't see it, enter a location while we keep trying ({countdownSeconds}s).
-              </p>
-              <button
-                type="button"
-                onClick={cancelLocationRequest}
-                className="cursor-pointer font-kodchasan text-sm font-medium text-app-accent underline transition-opacity hover:opacity-80"
-              >
-                Cancel
-              </button>
+              <div className="w-full max-w-200">
+                <LocationSearchBar
+                  mode="home"
+                  onCommitLocation={(location, query) => {
+                    cancelLocationRequestRef.current()
+                    setQueryLocation(query, location.lat, location.lng, location.label)
+                    navigateWithTransition(buildBirdsUrl({ source: 'query', query, lat: location.lat, lng: location.lng, label: location.label }))
+                  }}
+                />
+              </div>
+              <div className="flex w-full max-w-200 flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDiscoverNearby}
+                  disabled={isGeoLoading}
+                  className={`flex items-center justify-center gap-2 font-kodchasan text-[20px] font-bold text-white drop-shadow-md transition-opacity hover:opacity-90 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 ${isGeoLoading ? 'no-underline' : 'underline decoration-white decoration-2 underline-offset-2'}`}
+                >
+                  {isGeoLoading && (
+                    <span className="size-5 animate-spin rounded-full border-2 border-app-accent-secondary border-t-transparent" aria-hidden />
+                  )}
+                  {isGeoLoading ? 'Finding your location...' : 'Discover Wingspan birds near you'}
+                </button>
+                {isGeoLoading && (
+                  <>
+                    <p className="text-center text-sm text-white/90">
+                      Look for the location prompt in your browser. If you don't see it, enter a location while we keep trying ({countdownSeconds}s).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={cancelLocationRequest}
+                      className="cursor-pointer font-kodchasan text-sm font-medium text-white underline decoration-white decoration-2 underline-offset-2 drop-shadow-md transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black/50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {isGeoDenied && (
+                  <p className="text-center text-sm text-white/90">
+                    Location access was denied. Let's try something else — enter a location instead.
+                  </p>
+                )}
+                {isGeoUnavailable && geoError && (
+                  <p className="text-center text-sm text-white/90">
+                    {geoError}{' '}No worries — try again, or enter a location.
+                  </p>
+                )}
+                {isGeoCanceled && (
+                  <p className="text-center text-sm text-white/90">
+                    Location request canceled. Enter a location to keep going.
+                  </p>
+                )}
+              </div>
             </>
-          )}
-          {isGeoDenied && (
-            <p className="text-center text-sm text-app-text/80">
-              Location access was denied. Let's try something else — enter a location instead.
-            </p>
-          )}
-          {isGeoUnavailable && geoError && (
-            <p className="text-center text-sm text-app-text/80">
-              {geoError}{' '}No worries — try again, or enter a location.
-            </p>
-          )}
-          {isGeoCanceled && (
-            <p className="text-center text-sm text-app-text/80">
-              Location request canceled. Enter a location to keep going.
-            </p>
-          )}
-        </div>
-      </main>
+          }
+        />
+      </section>
     </div>
   )
 }

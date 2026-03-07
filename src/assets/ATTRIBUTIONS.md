@@ -6,13 +6,11 @@ Bird photos are sourced from Unsplash and used under the [Unsplash License](http
 
 - Collection: [FeatherFinder App](https://unsplash.com/collections/FxFyPJjWRz0/featherfinder-app)
 - Local image files currently in use:
-  - `src/assets/images/birds/tropical-royal-flycatcher.png`
-  - `src/assets/images/birds/american-flamingo.png`
-  - `src/assets/images/birds/common-kingfisher.png`
+  - `src/assets/images/birds/european-robin.jpg` — Photo: Aarn Giri
+  - `src/assets/images/birds/burrowing-owl.jpg` — Photo: Alef Morais
+  - `src/assets/images/birds/common-kingfisher.png` — Photo: Anushtup De
   - `src/assets/images/birds/texture-overlay.png`
 - Original exploration source: `visual-explorations/figma-make-featherfinder-app-welcome-screen/`
-
-When specific photographer-by-photo credits are finalized, add them here alongside each filename.
 
 ## Icon Attributions
 

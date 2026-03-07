@@ -31,9 +31,9 @@ vi.mock('@/services/geocoding', () => ({
 const mockGeocodeLocation = vi.mocked(geocodeLocation)
 const mockSearchLocationSuggestions = vi.mocked(searchLocationSuggestions)
 
-function TestApp() {
+function TestApp({ initialEntries = ['/'] }: { initialEntries?: string[] }) {
   return (
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={initialEntries}>
       <LocationProvider>
         <App />
       </LocationProvider>
@@ -58,6 +58,25 @@ describe('HomeScreen', () => {
       requestLocation: mockRequestLocation,
       cancelLocationRequest: mockCancelLocationRequest,
     } as GeolocationResult)
+  })
+
+  describe('habitat carousel', () => {
+    it('renders 3 habitat slides with bird names and photo author', () => {
+      render(<TestApp />)
+      expect(screen.getByText('European Robin')).toBeInTheDocument()
+      expect(screen.getByText(/Photo: Aarn Giri/)).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: /european robin/i })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: /burrowing owl/i })).toBeInTheDocument()
+      expect(screen.getByRole('group', { name: /common kingfisher/i })).toBeInTheDocument()
+    })
+
+    it('dot navigation changes slide when clicked', async () => {
+      const user = userEvent.setup()
+      render(<TestApp />)
+      const wetlandButton = screen.getByRole('tab', { name: /go to wetland habitat slide/i })
+      await user.click(wetlandButton)
+      expect(screen.getByRole('group', { name: /common kingfisher.*wetland/i })).toBeInTheDocument()
+    })
   })
 
   describe('location search flow', () => {
