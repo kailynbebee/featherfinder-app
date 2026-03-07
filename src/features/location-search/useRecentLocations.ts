@@ -69,5 +69,17 @@ export function useRecentLocations() {
     writeToStorage(updated)
   }, [])
 
-  return { recentLocations: locations, addRecentLocation }
+  const removeRecentLocation = useCallback((recent: RecentLocation) => {
+    const current = readFromStorage()
+    const updated = current.filter(
+      (item) =>
+        item.label !== recent.label ||
+        item.lat !== recent.lat ||
+        item.lng !== recent.lng ||
+        item.ts !== recent.ts
+    )
+    writeToStorage(updated)
+  }, [])
+
+  return { recentLocations: locations, addRecentLocation, removeRecentLocation }
 }

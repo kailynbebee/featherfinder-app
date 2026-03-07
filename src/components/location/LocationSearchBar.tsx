@@ -103,7 +103,7 @@ export function LocationSearchBar({
   const dropdownRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const skipResultsPrefillOnNextFocusRef = useRef(false)
-  const { recentLocations, addRecentLocation } = useRecentLocations()
+  const { recentLocations, addRecentLocation, removeRecentLocation } = useRecentLocations()
 
   const wrappedOnCommit = useCallback(
     (loc: LocationSuggestion, query: string) => {
@@ -310,21 +310,39 @@ export function LocationSearchBar({
                 className="divide-y divide-app-border-muted/35"
               >
                 {recentLocations.map((recent, index) => (
-                  <li key={`${recent.label}-${recent.lat}-${recent.lng}-${recent.ts}`}>
+                  <li
+                    key={`${recent.label}-${recent.lat}-${recent.lng}-${recent.ts}`}
+                    className={`group flex items-center transition-colors hover:bg-app-background ${activeRecentIndex === index ? 'bg-app-background' : ''}`}
+                    onMouseEnter={() => setActiveRecentIndex(index)}
+                  >
                     <button
                       type="button"
                       id={recentOptionId(index)}
                       role="option"
                       aria-selected={activeRecentIndex === index}
-                      onMouseEnter={() => setActiveRecentIndex(index)}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         selectRecent(recent)
                       }}
                       aria-label={recent.label}
-                      className={`w-full cursor-pointer px-4 py-2 text-left transition-colors hover:bg-app-background ${activeRecentIndex === index ? 'bg-app-background' : ''}`}
+                      className="min-w-0 flex-1 cursor-pointer px-4 py-2 text-left font-kodchasan text-sm text-app-text"
                     >
-                      <p className="font-kodchasan text-sm text-app-text">{recent.label}</p>
+                      <p className="truncate">{recent.label}</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        removeRecentLocation(recent)
+                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      aria-label={`Remove ${recent.label} from recent searches`}
+                      className="flex shrink-0 cursor-pointer items-center justify-center self-stretch px-3 text-app-text/50 opacity-0 transition-opacity group-hover:opacity-100 hover:text-app-text focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus-visible:ring-inset"
+                    >
+                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
                     </button>
                   </li>
                 ))}
