@@ -39,7 +39,7 @@ export function BirdCard({
       onClick={handleClick}
       aria-pressed={selected}
       aria-label={`Bird card ${bird.id}${inWingspan ? ', in Wingspan' : ''}`}
-      className={`relative flex w-full gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-app-accent-secondary/15' : 'bg-white/85 hover:bg-white'}`}
+      className={`relative flex w-full cursor-pointer gap-4 rounded-xl p-4 text-left shadow-[0_2px_8px_rgba(78,54,38,0.08)] transition-colors ${selected ? 'bg-app-accent-secondary/15' : 'bg-white/85 hover:bg-white'}`}
     >
       {showWingspanMark && inWingspan && (
         <span

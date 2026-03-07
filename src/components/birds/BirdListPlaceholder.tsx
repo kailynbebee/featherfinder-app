@@ -7,6 +7,7 @@ import { useBirdTags } from '@/hooks/useBirdTags'
 import { BirdTag as BirdTagChip } from '@/components/ui/BirdTag'
 import { RarityBadge } from '@/components/ui/RarityBadge'
 import { BirdCard } from '@/components/birds/BirdCard'
+import { BirdFiltersModal } from '@/components/birds/BirdFiltersModal'
 import { BirdMap } from '@/components/birds/BirdMap'
 import { FeatherFinderMark } from '@/components/branding/FeatherFinderMark'
 import { LocationSearchBar } from '@/components/location/LocationSearchBar'
@@ -93,6 +94,173 @@ function useIsDesktop() {
   )
 }
 
+/** True when viewport >= 1024px; show key filters inline, rest in Filters button */
+function useShowFiltersInline() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => {}
+      const mq = window.matchMedia('(min-width: 1024px)')
+      mq.addEventListener('change', onStoreChange)
+      return () => mq.removeEventListener('change', onStoreChange)
+    },
+    () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1024px)').matches : false),
+    () => false
+  )
+}
+
+const MOMENTUM_FRICTION = 0.96
+const MOMENTUM_MIN_VELOCITY = 0.2
+
+function BirdListScrollSection({
+  className,
+  as: Tag = 'div',
+  children,
+}: {
+  className?: string
+  as?: 'section' | 'div'
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLElement | null>(null)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dragRef = useRef<{
+    startY: number
+    startScrollTop: number
+    lastClientY: number
+    prevClientY: number
+    lastTime: number
+    prevTime: number
+  } | null>(null)
+  const momentumRafRef = useRef<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const handleScroll = () => {
+      setIsScrolling(true)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => {
+        setIsScrolling(false)
+        timeoutRef.current = null
+      }, 1500)
+    }
+
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', handleScroll)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (momentumRafRef.current) cancelAnimationFrame(momentumRafRef.current)
+    }
+  }, [])
+
+  const DRAG_THRESHOLD_PX = 5
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const el = e.currentTarget as HTMLElement
+    const now = e.timeStamp
+    dragRef.current = {
+      startY: e.clientY,
+      startScrollTop: el.scrollTop,
+      lastClientY: e.clientY,
+      prevClientY: e.clientY,
+      lastTime: now,
+      prevTime: now,
+    }
+  }, [])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const d = dragRef.current
+    if (!d) return
+    const el = e.currentTarget as HTMLElement
+    const dy = Math.abs(e.clientY - d.startY)
+    if (!el.hasPointerCapture?.(e.pointerId)) {
+      if (dy < DRAG_THRESHOLD_PX) return
+      el.setPointerCapture(e.pointerId)
+      setIsDragging(true)
+    }
+    const now = e.timeStamp
+    d.prevClientY = d.lastClientY
+    d.prevTime = d.lastTime
+    d.lastClientY = e.clientY
+    d.lastTime = now
+
+    const deltaY = e.clientY - d.startY
+    const maxScroll = el.scrollHeight - el.clientHeight
+    el.scrollTop = Math.max(0, Math.min(maxScroll, d.startScrollTop - deltaY))
+  }, [])
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const el = e.currentTarget as HTMLElement
+    if (el.hasPointerCapture?.(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId)
+    }
+
+    const d = dragRef.current
+    dragRef.current = null
+    setIsDragging(false)
+
+    if (!d) return
+
+    const dt = d.lastTime - d.prevTime
+    const velocityPxPerMs =
+      dt > 0 ? (d.prevClientY - d.lastClientY) / dt : 0
+
+    if (Math.abs(velocityPxPerMs) < 0.2) return
+
+    let velocity = velocityPxPerMs * 3
+    let lastTime = performance.now()
+
+    const tick = () => {
+      const now = performance.now()
+      const elapsed = Math.min(now - lastTime, 50)
+      lastTime = now
+
+      const maxScroll = el.scrollHeight - el.clientHeight
+      const delta = velocity * elapsed
+      let nextScroll = el.scrollTop + delta
+
+      if (nextScroll <= 0) {
+        el.scrollTop = 0
+        return
+      }
+      if (nextScroll >= maxScroll) {
+        el.scrollTop = maxScroll
+        return
+      }
+
+      el.scrollTop = nextScroll
+      velocity *= MOMENTUM_FRICTION
+
+      if (Math.abs(velocity) > MOMENTUM_MIN_VELOCITY) {
+        momentumRafRef.current = requestAnimationFrame(tick)
+      }
+    }
+
+    momentumRafRef.current = requestAnimationFrame(tick)
+  }, [])
+
+  const combinedClassName = `scrollbar-show-on-scroll ${isScrolling ? 'is-scrolling' : ''} ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'} ${className ?? ''}`.trim()
+  const pointerProps = {
+    onPointerDown: handlePointerDown,
+    onPointerMove: handlePointerMove,
+    onPointerUp: handlePointerUp,
+    onPointerCancel: handlePointerUp,
+    style: { touchAction: 'pan-y' as const },
+  }
+
+  return Tag === 'section' ? (
+    <section ref={ref} className={combinedClassName} {...pointerProps}>
+      {children}
+    </section>
+  ) : (
+    <div ref={ref as React.RefObject<HTMLDivElement>} className={combinedClassName} {...pointerProps}>
+      {children}
+    </div>
+  )
+}
+
 function QuickViewOverlay({
   bird,
   tags,
@@ -124,44 +292,48 @@ function QuickViewOverlay({
       onClick={onClose}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-8 shadow-xl"
+        className="relative flex h-[85vh] max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl sm:h-[88vh] lg:max-w-4xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 rounded-full p-1 text-app-text/70 hover:bg-app-border-muted/30 hover:text-app-text"
-        >
-          <span className="text-xl">×</span>
-        </button>
-        {showWingspanMark && inWingspan && (
-          <span
-            className="absolute right-12 top-8 font-serif text-base font-bold text-app-text/60"
-            aria-label="In Wingspan"
+        <div className="shrink-0 px-6 pt-6 pb-2">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-app-text/60 transition-colors hover:bg-app-background hover:text-app-text"
           >
-            W
-          </span>
-        )}
-        <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-app-text">
-          {bird.commonName}
-        </h2>
-        <p className="font-kodchasan text-sm italic text-app-text/80">{bird.scientificName}</p>
-        <figure className="mt-4">
-          <div className="flex justify-center overflow-hidden rounded-xl bg-app-border-muted/20">
+            <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+          {showWingspanMark && inWingspan && (
+            <span
+              className="absolute right-12 top-8 font-serif text-base font-bold text-app-text/60"
+              aria-label="In Wingspan"
+            >
+              W
+            </span>
+          )}
+          <h2 id="quick-view-title" className="pr-8 font-kodchasan text-xl font-bold text-app-text">
+            {bird.commonName}
+          </h2>
+          <p className="font-kodchasan text-sm italic text-app-text/80">{bird.scientificName}</p>
+        </div>
+        <figure className="min-h-0 flex-1 px-6 py-3">
+          <div className="flex h-full min-h-[40vh] justify-center overflow-hidden rounded-xl bg-app-border-muted/20">
             {isLoading ? (
               <div
-                className="h-64 w-80 animate-pulse bg-app-border-muted/40"
+                className="h-full w-full min-h-[40vh] animate-pulse bg-app-border-muted/40"
                 aria-hidden
               />
             ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt=""
-                className="h-64 w-full object-cover"
+                className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-64 w-80 items-center justify-center bg-app-border-muted/30">
+              <div className="flex h-full min-h-[40vh] w-full items-center justify-center bg-app-border-muted/30">
                 <span className="text-4xl text-app-text/40">🐦</span>
               </div>
             )}
@@ -180,14 +352,16 @@ function QuickViewOverlay({
             </figcaption>
           )}
         </figure>
-        <p className="mt-4 font-kodchasan text-sm text-app-text/70">
-          ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
-        </p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <RarityBadge tier={rarity} />
-          {tags.map((tag, i) => (
-            <BirdTagChip key={i} tag={tag} />
-          ))}
+        <div className="shrink-0 space-y-2 px-6 pb-6 pt-4">
+          <p className="font-kodchasan text-sm text-app-text/70">
+            ~{bird.distanceMiles} miles away · seen {bird.lastSeenHoursAgo}h ago
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <RarityBadge tier={rarity} />
+            {tags.map((tag, i) => (
+              <BirdTagChip key={i} tag={tag} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -208,15 +382,16 @@ export function BirdListPlaceholder() {
   const [sortMode, setSortMode] = useState<SortMode>('distance')
   const [selectedBirdId, setSelectedBirdId] = useState<string | null>(null)
   const [quickViewBird, setQuickViewBird] = useState<NearbyBird | null>(null)
-  const [showFilterFade, setShowFilterFade] = useState(false)
   const [isDraggingSheet, setIsDraggingSheet] = useState(false)
   const [dragPreviewHeightPx, setDragPreviewHeightPx] = useState<number | null>(null)
   const [sheetContainerHeightPx, setSheetContainerHeightPx] = useState(() =>
     typeof window !== 'undefined' ? Math.round(window.innerHeight * 0.6) : 480
   )
-  const filterScrollRef = useRef<HTMLDivElement>(null)
   const mobileSheetSectionRef = useRef<HTMLElement | null>(null)
   const isDesktop = useIsDesktop()
+  const showFiltersInline = useShowFiltersInline()
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
   const sheetDragRef = useRef({
     pointerId: -1,
     startY: 0,
@@ -380,30 +555,6 @@ export function BirdListPlaceholder() {
     [handleSetSheetMode, sheetMode]
   )
 
-  const updateFilterFade = useCallback(() => {
-    const el = filterScrollRef.current
-    if (!el) return
-    const hasOverflow = el.scrollWidth > el.clientWidth
-    const isAtEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
-    setShowFilterFade(hasOverflow && !isAtEnd)
-  }, [])
-
-  useEffect(() => {
-    const el = filterScrollRef.current
-    if (!el) return
-    updateFilterFade()
-    el.addEventListener('scroll', updateFilterFade)
-    const ro =
-      typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(updateFilterFade)
-        : null
-    ro?.observe(el)
-    return () => {
-      el.removeEventListener('scroll', updateFilterFade)
-      ro?.disconnect()
-    }
-  }, [updateFilterFade])
-
   const openQuickView = (bird: NearbyBird) => {
     setQuickViewBird(bird)
     history.pushState({ quickView: true }, '')
@@ -494,6 +645,15 @@ export function BirdListPlaceholder() {
 
   const mapFocusedBirdId = quickViewBird?.id ?? selectedBirdId
   const listItemRefs = useRef<Record<string, HTMLLIElement | null>>({})
+
+  const handleMapMarkerClick = useCallback(
+    (birdId: string) => {
+      setSelectedBirdId(birdId)
+      const bird = visibleBirds.find((b) => b.id === birdId)
+      if (bird) openQuickView(bird)
+    },
+    [visibleBirds]
+  )
 
   useEffect(() => {
     const el = listItemRefs.current[selectedBirdId ?? '']
@@ -589,11 +749,11 @@ export function BirdListPlaceholder() {
 
   return (
     <div className="home-to-results-enter flex h-full min-h-dvh flex-col overflow-hidden bg-app-background">
-      <AppHeader className="shrink-0 px-4 pb-4 pt-4 md:px-6">
+      <AppHeader className="shrink-0 px-4 pb-2 pt-4 md:px-6 md:pb-2">
         <h1 className="sr-only">
           Birds near {location.source === 'geo' ? 'you' : location.label}
         </h1>
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-2 flex items-center gap-3 md:mb-3">
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -609,92 +769,45 @@ export function BirdListPlaceholder() {
               onCommitLocation={(loc) => setQueryLocation(loc.label, loc.lat, loc.lng, loc.label)}
             />
           </div>
-        </div>
-        <div className="mt-3 flex items-stretch gap-2 pb-1">
-          <div className="relative flex min-w-0 flex-1 items-center">
-            <div
-              ref={filterScrollRef}
-              className="flex h-10 w-full items-center overflow-x-auto overflow-y-hidden md:overflow-x-visible"
+          {!showFiltersInline && (
+            <button
+              type="button"
+              onClick={() => setFiltersModalOpen(true)}
+              className="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-app-border-muted/70 bg-white px-3 font-kodchasan text-sm text-black hover:bg-app-background"
+              aria-label="Open filters and sort"
             >
-              <div className="flex h-10 items-center gap-2 pr-12">
-              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Distance filter">
-                {(['10', '25'] as const).map((distance, i) => (
-                  <button
-                    key={distance}
-                    type="button"
-                    onClick={() => setDistanceFilter(distance)}
-                    aria-pressed={distanceFilter === distance}
-                    className={`flex h-10 items-center px-3 font-kodchasan text-sm ${distanceFilter === distance ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
-                  >
-                    {distance === '25' ? 'Within 25 mi' : `Under ${distance} mi`}
-                  </button>
-                ))}
-              </div>
-              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Bird group filter">
-                {(['all', 'songbird', 'woodpecker', 'raptor', 'other'] as const).map((group, i) => (
-                  <button
-                    key={group}
-                    type="button"
-                    onClick={() => setGroupFilter(group)}
-                    aria-pressed={groupFilter === group}
-                    className={`flex h-10 shrink-0 items-center px-3 font-kodchasan text-sm ${groupFilter === group ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
-                  >
-                    {group === 'all' ? 'All' : group}
-                  </button>
-                ))}
-              </div>
-              <div className="flex h-10 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70" role="group" aria-label="Wingspan bird filter">
-                <button
-                  type="button"
-                  onClick={() => setIncludeNonGameBirds(false)}
-                  aria-pressed={!includeNonGameBirds}
-                  className={`flex h-10 items-center px-3 font-kodchasan text-sm ${!includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
-                >
-                  Wingspan birds
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIncludeNonGameBirds(true)}
-                  aria-pressed={includeNonGameBirds}
-                  className={`flex h-10 items-center border-l border-app-border-muted/70 px-3 font-kodchasan text-sm ${includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
-                >
-                  All birds
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRecentOnly((value) => !value)}
-                className={`flex h-10 shrink-0 items-center rounded-xl border px-3 font-kodchasan text-sm ${recentOnly ? 'border-app-accent-secondary-hover bg-app-accent-secondary/15 text-teal-900' : 'border-app-border-muted/70 bg-white text-black hover:bg-app-background'}`}
-              >
-                Last 24h
-              </button>
-              </div>
-            </div>
-            {showFilterFade && !isDesktop && (
-              <div
-                className="pointer-events-none absolute right-0 top-0 bottom-1 w-6 shrink-0 bg-linear-to-r from-transparent to-app-background"
-                aria-hidden
-              />
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setSortMode((mode) => (mode === 'distance' ? 'recent' : 'distance'))}
-            className="flex min-h-10 shrink-0 items-center self-stretch rounded-xl border border-app-border-muted/70 bg-white px-3 font-kodchasan text-sm text-black hover:bg-app-background"
-          >
-            Sort: {sortMode === 'distance' ? 'Distance' : 'Recent'}
-          </button>
+              <svg className="size-4 text-app-text/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4" />
+              </svg>
+              Filters
+            </button>
+          )}
         </div>
+        <BirdFiltersModal
+          isOpen={filtersModalOpen}
+          onClose={() => setFiltersModalOpen(false)}
+          distanceFilter={distanceFilter}
+          onDistanceFilterChange={setDistanceFilter}
+          groupFilter={groupFilter}
+          onGroupFilterChange={setGroupFilter}
+          includeNonGameBirds={includeNonGameBirds}
+          onIncludeNonGameBirdsChange={setIncludeNonGameBirds}
+          recentOnly={recentOnly}
+          onRecentOnlyChange={setRecentOnly}
+          sortMode={sortMode}
+          onSortModeChange={setSortMode}
+          visibleCount={visibleBirds.length}
+        />
       </AppHeader>
 
-      <main className="flex min-h-0 flex-1 flex-col w-full md:px-6 md:pt-4 md:pb-4">
+      <main
+        ref={mainRef}
+        className="relative flex min-h-0 flex-1 flex-col w-full md:pr-0 md:pb-0"
+      >
         {isDesktop ? (
-          <div className="grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(340px,420px)_1fr]">
-            <section className="min-h-0 overflow-y-auto rounded-2xl bg-white/45 p-4">
-              {renderListContent('space-y-3')}
-            </section>
+          <div className="relative min-h-0 flex-1">
             <section
-              className="min-h-0 overflow-hidden rounded-2xl"
+              className="absolute inset-0"
               aria-label="Visual bird map (screen reader note)"
               aria-description="This map is visual-only and hidden from screen readers. Use the bird list panel for all bird location details and selection."
             >
@@ -710,8 +823,7 @@ export function BirdListPlaceholder() {
                 <BirdMap
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
-                  onSelectBird={setSelectedBirdId}
-                  pauseSelectionFlyTo={quickViewBird !== null}
+                  onSelectBird={handleMapMarkerClick}
                   searchRadiusMiles={distanceFilter === '10' ? 10 : 25}
                   searchCenter={{ lat: location.lat, lng: location.lng }}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
@@ -721,6 +833,60 @@ export function BirdListPlaceholder() {
                 />
               </MapErrorBoundary>
             </section>
+            <section
+              className="absolute left-6 top-4 bottom-4 z-[1000] w-[min(420px,calc(100%-3rem))] min-w-[340px] overflow-hidden rounded-2xl bg-app-background/92 shadow-[0_4px_24px_rgba(78,54,38,0.12)] backdrop-blur-xs"
+              aria-label="Bird sightings list"
+            >
+              <BirdListScrollSection className="h-full min-h-0 overflow-y-auto pt-4 pb-4 pl-4 pr-2" as="div">
+                {renderListContent('space-y-3')}
+              </BirdListScrollSection>
+            </section>
+            {showFiltersInline && (
+              <div className="absolute left-[calc(1.5rem+420px+1.5rem)] top-4 z-[1100] flex flex-wrap items-center gap-2">
+                  <div className="flex h-9 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70 bg-white/95 shadow-sm backdrop-blur-sm" role="group" aria-label="Distance filter">
+                    {(['10', '25'] as const).map((distance, i) => (
+                      <button
+                        key={distance}
+                        type="button"
+                        onClick={() => setDistanceFilter(distance)}
+                        aria-pressed={distanceFilter === distance}
+                        className={`flex h-9 shrink-0 cursor-pointer items-center px-3 font-kodchasan text-sm whitespace-nowrap ${distanceFilter === distance ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'} ${i > 0 ? 'border-l border-app-border-muted/70' : ''}`}
+                      >
+                        {distance === '25' ? 'Within 25 mi' : `Under ${distance} mi`}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex h-9 shrink-0 overflow-hidden rounded-xl border border-app-border-muted/70 bg-white/95 shadow-sm backdrop-blur-sm" role="group" aria-label="Wingspan bird filter">
+                    <button
+                      type="button"
+                      onClick={() => setIncludeNonGameBirds(false)}
+                      aria-pressed={!includeNonGameBirds}
+                      className={`flex h-9 shrink-0 cursor-pointer items-center px-3 font-kodchasan text-sm whitespace-nowrap ${!includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
+                    >
+                      Wingspan birds
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIncludeNonGameBirds(true)}
+                      aria-pressed={includeNonGameBirds}
+                      className={`flex h-9 shrink-0 cursor-pointer items-center border-l border-app-border-muted/70 px-3 font-kodchasan text-sm whitespace-nowrap ${includeNonGameBirds ? 'bg-app-accent-secondary/15 text-teal-900' : 'bg-white text-black hover:bg-app-background'}`}
+                    >
+                      All birds
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFiltersModalOpen(true)}
+                    className="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-app-border-muted/70 bg-white/95 px-3 font-kodchasan text-sm text-black shadow-sm backdrop-blur-sm hover:bg-white"
+                    aria-label="Open filters and sort"
+                  >
+                    <svg className="size-4 text-app-text/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4" />
+                    </svg>
+                    Filters
+                  </button>
+                </div>
+              )}
           </div>
         ) : null}
 
@@ -743,8 +909,7 @@ export function BirdListPlaceholder() {
                 <BirdMap
                   birds={visibleBirds}
                   selectedBirdId={mapFocusedBirdId}
-                  onSelectBird={setSelectedBirdId}
-                  pauseSelectionFlyTo={quickViewBird !== null}
+                  onSelectBird={handleMapMarkerClick}
                   searchRadiusMiles={distanceFilter === '10' ? 10 : 25}
                   searchCenter={{ lat: location.lat, lng: location.lng }}
                   landmarkDistanceMiles={distanceFilter === '10' ? 10 : 25}
@@ -805,13 +970,13 @@ export function BirdListPlaceholder() {
                     {visibleBirds.length >= 100 ? '100+' : visibleBirds.length} birds found in this area
                   </p>
                 </div>
-                <div className={`${sheetMode === 'collapsed' ? 'h-auto' : 'h-[calc(100%-3.5rem)] overflow-y-auto pr-1'}`}>
+                <BirdListScrollSection className={`${sheetMode === 'collapsed' ? 'h-auto' : 'h-[calc(100%-3.5rem)] overflow-y-auto pt-4 pb-4 pl-4 pr-2'}`} as="div">
                   {sheetMode === 'collapsed' ? (
                     null
                   ) : (
                     renderListContent('space-y-2')
                   )}
-                </div>
+                </BirdListScrollSection>
               </div>
             </section>
           )}

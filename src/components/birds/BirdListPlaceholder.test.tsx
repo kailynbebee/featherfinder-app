@@ -159,7 +159,9 @@ describe('BirdListPlaceholder', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Northern Cardinal').length).toBeGreaterThan(0)
     })
-    await user.click(screen.getAllByRole('button', { name: 'raptor' })[0])
+    await user.click(screen.getByRole('button', { name: /filters/i }))
+    await user.click(screen.getByRole('button', { name: 'raptor' }))
+    await user.click(screen.getByRole('button', { name: /show results/i }))
     expect(screen.queryAllByText('Northern Cardinal').length).toBe(0)
     expect(screen.getAllByText('Red-tailed Hawk').length).toBeGreaterThan(0)
   })
